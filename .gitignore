@@ -1,0 +1,26 @@
+# Node Modules
+node_modules/
+
+# Environment Variables
+.env
+.env.local
+
+# Build Files
+.next/
+dist/
+build/
+
+# Logs
+*.log
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# VS Code
+.vscode/
+
+# Dependency Lock Files (Optional)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
