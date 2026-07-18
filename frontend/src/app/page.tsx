@@ -17,9 +17,13 @@ export default function Home() {
       </nav>
 
       {/* Hero */}
-      <section className="text-center py-24 px-6">
+      <section className="text-center py-32 px-6">
+        <p className="text-blue-600 font-semibold mb-3">
+          FreelanceShield
+        </p>
+
         <h2 className="text-5xl font-bold mb-6">
-          Secure Freelancing Marketplace
+          Connect, Collaborate & Grow
         </h2>
 
         <p className="text-lg text-gray-600 max-w-2xl mx-auto mb-8">
@@ -77,22 +81,22 @@ export default function Home() {
 
         <div className="grid md:grid-cols-4 gap-6 text-center">
           <div>
-            <h3 className="font-bold">1</h3>
+            <h3 className="font-bold text-2xl mb-2">1</h3>
             <p>Create Account</p>
           </div>
 
           <div>
-            <h3 className="font-bold">2</h3>
+            <h3 className="font-bold text-2xl mb-2">2</h3>
             <p>Post or Browse Projects</p>
           </div>
 
           <div>
-            <h3 className="font-bold">3</h3>
+            <h3 className="font-bold text-2xl mb-2">3</h3>
             <p>Collaborate</p>
           </div>
 
           <div>
-            <h3 className="font-bold">4</h3>
+            <h3 className="font-bold text-2xl mb-2">4</h3>
             <p>Complete Project</p>
           </div>
         </div>
