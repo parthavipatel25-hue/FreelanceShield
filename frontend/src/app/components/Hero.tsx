@@ -119,7 +119,7 @@ export default function Hero() {
             {/* HIRE TALENT BUTTON */}
 
             <Link
-              href="/hire-talent"
+              href="/register?role=client"
               className="
                 rounded-xl
                 bg-emerald-600
@@ -148,7 +148,7 @@ export default function Hero() {
             {/* FREELANCER BUTTON */}
 
             <Link
-              href="/register"
+                href="/register?role=freelancer"
               className="
                 rounded-xl
                 border

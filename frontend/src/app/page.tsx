@@ -4,7 +4,7 @@ import Categories from "./components/Categories";
 import HowItWorks from "./components/HowItWorks";
 import About from "./components/About";
 import Footer from "./components/Footer";
-import { Contact } from "lucide-react";
+//import { Contact } from "lucide-react";
 
 export default function Home() {
   return (
@@ -23,13 +23,11 @@ export default function Home() {
         <HowItWorks />
       </section>
 
-       <section id="about">
-        <About />
-      </section>
-
-      <section id="contact">
+       <About />
+       
+     {/* <section id="contact">
         <Contact />
-      </section>
+      </section>*/}
 
       <Footer />
     </main>
