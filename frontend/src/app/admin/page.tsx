@@ -3,9 +3,30 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import DashboardLayout from "../components/layout/DashboardLayout";
+import WelcomeBanner from "../components/dashboard/WelcomeBanner";
+import StatsCard from "../components/dashboard/StatsCard";
+import ProfileCard from "../components/dashboard/ProfileCard";
+import QuickActions from "../components/dashboard/QuickActions";
+import RecentActivity from "../components/dashboard/RecentActivity";
+
+import {
+  Users,
+  Briefcase,
+  FolderOpen,
+  ShieldCheck,
+} from "lucide-react";
+
+interface User {
+  fullname: string;
+  email: string;
+  role: "admin" | "freelancer" | "client";
+}
+
 export default function AdminPage() {
   const router = useRouter();
-  const [user, setUser] = useState<any>(null);
+
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
@@ -15,87 +36,130 @@ export default function AdminPage() {
       return;
     }
 
-    const loggedInUser = JSON.parse(storedUser);
+    try {
+      const loggedInUser = JSON.parse(storedUser);
 
-    if (loggedInUser.role !== "admin") {
+      if (loggedInUser.role !== "admin") {
+        router.push("/login");
+        return;
+      }
+
+      setUser(loggedInUser);
+    } catch (error) {
+      console.error("Invalid user data:", error);
+      localStorage.removeItem("user");
       router.push("/login");
-      return;
     }
-
-    setUser(loggedInUser);
   }, [router]);
 
-  const handleLogout = () => {
-    localStorage.removeItem("user");
-    router.push("/login");
-  };
-
-  if (!user) return null;
+  if (!user) {
+    return null;
+  }
 
   return (
-    <div className="min-h-screen bg-gray-100 p-10">
+    <DashboardLayout role="admin">
 
-      <h1 className="text-3xl font-bold">
-        Welcome, {user.fullname} 👋
-      </h1>
+      {/* ========================================= */}
+      {/* WELCOME BANNER */}
+      {/* ========================================= */}
 
-      <p className="text-gray-600 mt-2">
-        Role : {user.role}
-      </p>
+      <section className="w-full">
+        <WelcomeBanner
+          fullname={user.fullname}
+          role={user.role}
+        />
+      </section>
 
-      <hr className="my-8" />
+      {/* ========================================= */}
+      {/* STATISTICS */}
+      {/* ========================================= */}
 
-      <h2 className="text-2xl font-semibold mb-4">
-        Dashboard
-      </h2>
+      <section className="mt-5 sm:mt-6">
 
-      <div className="space-y-3">
+        <div
+          className="
+            grid
+            grid-cols-1
+            gap-4
+            sm:grid-cols-2
+            sm:gap-5
+            xl:grid-cols-4
+            xl:gap-6
+          "
+        >
 
-        <button className="w-full border rounded-lg p-3 text-left">
-          Manage Users
-        </button>
+          <StatsCard
+            title="Total Users"
+            value="0"
+            icon={Users}
+          />
 
-        <button className="w-full border rounded-lg p-3 text-left">
-          Manage Freelancers
-        </button>
+          <StatsCard
+            title="Freelancers"
+            value="0"
+            icon={Briefcase}
+          />
 
-        <button className="w-full border rounded-lg p-3 text-left">
-          Manage Clients
-        </button>
+          <StatsCard
+            title="Clients"
+            value="0"
+            icon={ShieldCheck}
+          />
 
-        <button className="w-full border rounded-lg p-3 text-left">
-          Manage Categories
-        </button>
+          <StatsCard
+            title="Projects"
+            value="0"
+            icon={FolderOpen}
+          />
 
-        <button className="w-full border rounded-lg p-3 text-left">
-          Reports
-        </button>
+        </div>
 
-        <button className="w-full border rounded-lg p-3 text-left">
-          Settings
-        </button>
+      </section>
 
-      </div>
+      {/* ========================================= */}
+      {/* MAIN CONTENT */}
+      {/* ========================================= */}
 
-      <hr className="my-8" />
+      <section className="mt-5 sm:mt-6">
 
-      <h2 className="text-2xl font-semibold mb-4">
-        Quick Stats
-      </h2>
+        <div
+          className="
+            grid
+            grid-cols-1
+            gap-5
+            lg:grid-cols-3
+            lg:gap-6
+          "
+        >
 
-      <div className="space-y-2">
-        <p>Total Users : 0</p>
-        <p>Total Freelancers : 0</p>
-        <p>Total Clients : 0</p>
-      </div>
+          {/* Recent Activity */}
 
-      <button
-        onClick={handleLogout}
-        className="mt-10 bg-red-600 text-white px-6 py-3 rounded-lg"
-      >
-        Logout
-      </button>
+          <div className="min-w-0 lg:col-span-2">
+            <RecentActivity />
+          </div>
 
-    </div>
+          {/* Profile */}
+
+          <div className="min-w-0">
+            <ProfileCard
+              fullname={user.fullname}
+              email={user.email}
+              role={user.role}
+            />
+          </div>
+
+        </div>
+
+      </section>
+
+      {/* ========================================= */}
+      {/* QUICK ACTIONS */}
+      {/* ========================================= */}
+
+      <section className="mt-5 sm:mt-6">
+        <QuickActions />
+      </section>
+
+    </DashboardLayout>
   );
 }

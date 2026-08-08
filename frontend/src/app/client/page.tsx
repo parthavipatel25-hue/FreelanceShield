@@ -3,9 +3,29 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import DashboardLayout from "../components/layout/DashboardLayout";
+import WelcomeBanner from "../components/dashboard/WelcomeBanner";
+import StatsCard from "../components/dashboard/StatsCard";
+import RecentActivity from "../components/dashboard/RecentActivity";
+import ProfileCard from "../components/dashboard/ProfileCard";
+
+import {
+  BriefcaseBusiness,
+  Users,
+  Clock,
+  FileText,
+} from "lucide-react";
+
+interface User {
+  fullname: string;
+  email: string;
+  role: "admin" | "freelancer" | "client";
+}
+
 export default function ClientPage() {
   const router = useRouter();
-  const [user, setUser] = useState<any>(null);
+
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
@@ -15,87 +35,135 @@ export default function ClientPage() {
       return;
     }
 
-    const loggedInUser = JSON.parse(storedUser);
+    try {
+      const loggedInUser = JSON.parse(storedUser);
 
-    if (loggedInUser.role !== "client") {
+      if (loggedInUser.role !== "client") {
+        router.push("/login");
+        return;
+      }
+
+      setUser(loggedInUser);
+    } catch (error) {
+      console.error("Invalid user data:", error);
+
+      localStorage.removeItem("user");
       router.push("/login");
-      return;
     }
-
-    setUser(loggedInUser);
   }, [router]);
 
-  const handleLogout = () => {
-    localStorage.removeItem("user");
-    router.push("/login");
-  };
-
-  if (!user) return null;
+  if (!user) {
+    return null;
+  }
 
   return (
-    <div className="min-h-screen bg-gray-100 p-10">
+    <DashboardLayout role="client">
 
-      <h1 className="text-3xl font-bold">
-        Welcome, {user.fullname} 👋
-      </h1>
+      {/* ========================================= */}
+      {/* WELCOME BANNER */}
+      {/* ========================================= */}
 
-      <p className="text-gray-600 mt-2">
-        Role : {user.role}
-      </p>
+      <section className="w-full">
+        <WelcomeBanner
+          fullname={user.fullname}
+          role={user.role}
+        />
+      </section>
 
-      <hr className="my-8" />
+      {/* ========================================= */}
+      {/* STATISTICS */}
+      {/* ========================================= */}
 
-      <h2 className="text-2xl font-semibold mb-4">
-        Dashboard
-      </h2>
+      <section className="mt-5 sm:mt-6">
 
-      <div className="space-y-3">
+        <div
+          className="
+            grid
+            grid-cols-1
+            gap-4
+            sm:grid-cols-2
+            sm:gap-5
+            xl:grid-cols-4
+            xl:gap-6
+          "
+        >
 
-        <button className="w-full border rounded-lg p-3 text-left">
-          Create Profile
-        </button>
+          <StatsCard
+            title="Projects Posted"
+            value="0"
+            subtitle="Total projects created"
+            icon={BriefcaseBusiness}
+          />
 
-        <button className="w-full border rounded-lg p-3 text-left">
-          View Profile
-        </button>
+          <StatsCard
+            title="Active Projects"
+            value="0"
+            subtitle="Currently running"
+            icon={Clock}
+          />
 
-        <button className="w-full border rounded-lg p-3 text-left">
-          Post Project
-        </button>
+          <StatsCard
+            title="Proposals Received"
+            value="0"
+            subtitle="Freelancer applications"
+            icon={FileText}
+          />
 
-        <button className="w-full border rounded-lg p-3 text-left">
-          Browse Freelancers
-        </button>
+          <StatsCard
+            title="Hired Freelancers"
+            value="0"
+            subtitle="Working with you"
+            icon={Users}
+          />
 
-        <button className="w-full border rounded-lg p-3 text-left">
-          My Projects
-        </button>
+        </div>
 
-        <button className="w-full border rounded-lg p-3 text-left">
-          Settings
-        </button>
+      </section>
 
-      </div>
+      {/* ========================================= */}
+      {/* MAIN CONTENT */}
+      {/* ========================================= */}
 
-      <hr className="my-8" />
+      <section className="mt-5 sm:mt-6">
 
-      <h2 className="text-2xl font-semibold mb-4">
-        Quick Stats
-      </h2>
+        <div
+          className="
+            grid
+            grid-cols-1
+            gap-5
+            lg:grid-cols-3
+            lg:gap-6
+          "
+        >
 
-      <div className="space-y-2">
-        <p>Projects Posted : 0</p>
-        <p>Active Projects : 0</p>
-        <p>Hired Freelancers : 0</p>
-      </div>
+          {/* ================================= */}
+          {/* RECENT ACTIVITY */}
+          {/* ================================= */}
 
-      <button
-        onClick={handleLogout}
-        className="mt-10 bg-red-600 text-white px-6 py-3 rounded-lg"
-      >
-        Logout
-      </button>
+          <div className="min-w-0 lg:col-span-2">
 
-    </div>
+            <RecentActivity />
+
+          </div>
+
+          {/* ================================= */}
+          {/* PROFILE */}
+          {/* ================================= */}
+
+          <div className="min-w-0">
+
+            <ProfileCard
+              fullname={user.fullname}
+              email={user.email}
+              role={user.role}
+            />
+
+          </div>
+
+        </div>
+
+      </section>
+
+    </DashboardLayout>
   );
 }
