@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 
 interface User {
+  id: number;
   fullname: string;
   email: string;
   role: "admin" | "freelancer" | "client";
@@ -26,30 +27,49 @@ export default function ClientPage() {
   const router = useRouter();
 
   const [user, setUser] = useState<User | null>(null);
+  const [projectCount, setProjectCount] = useState(0);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
+    const loadClientData = async () => {
+      const storedUser = localStorage.getItem("user");
 
-    if (!storedUser) {
-      router.push("/login");
-      return;
-    }
-
-    try {
-      const loggedInUser = JSON.parse(storedUser);
-
-      if (loggedInUser.role !== "client") {
+      if (!storedUser) {
         router.push("/login");
         return;
       }
 
-      setUser(loggedInUser);
-    } catch (error) {
-      console.error("Invalid user data:", error);
+      try {
+        const loggedInUser = JSON.parse(storedUser);
 
-      localStorage.removeItem("user");
-      router.push("/login");
-    }
+        if (loggedInUser.role !== "client") {
+          router.push("/login");
+          return;
+        }
+
+        setUser(loggedInUser);
+
+        // ============================================
+        // GET CLIENT PROJECTS
+        // ============================================
+
+        const response = await fetch(
+          `http://localhost:5000/api/projects/client/${loggedInUser.id}`
+        );
+
+        const data = await response.json();
+
+        if (data.success) {
+          setProjectCount(data.projects.length);
+        }
+      } catch (error) {
+        console.error("Invalid user data or project request:", error);
+
+        localStorage.removeItem("user");
+        router.push("/login");
+      }
+    };
+
+    loadClientData();
   }, [router]);
 
   if (!user) {
@@ -90,7 +110,7 @@ export default function ClientPage() {
 
           <StatsCard
             title="Projects Posted"
-            value="0"
+            value={projectCount.toString()}
             subtitle="Total projects created"
             icon={BriefcaseBusiness}
           />

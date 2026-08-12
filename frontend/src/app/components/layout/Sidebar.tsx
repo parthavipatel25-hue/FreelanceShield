@@ -108,16 +108,16 @@ export default function Sidebar({ role }: SidebarProps) {
       icon: User,
       href: "/profile",
     },
+   {
+  title: "My Projects",
+  icon: FolderOpen,
+  href: "/client/projects",
+},
     {
-      title: "My Projects",
-      icon: FolderOpen,
-      href: "#",
-    },
-    {
-      title: "Post Project",
-      icon: PlusCircle,
-      href: "#",
-    },
+  title: "Post Project",
+  icon: PlusCircle,
+  href: "/client/create-project",
+},
   ];
 
   const menu =

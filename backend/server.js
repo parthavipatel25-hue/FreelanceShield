@@ -9,6 +9,7 @@ const authRoutes = require("./routes/authRoutes");
 const profileRoutes = require("./routes/profileRoutes");
 const freelancerProfileRoutes = require("./routes/freelancerProfileRoutes");
 const clientProfileRoutes = require("./routes/clientProfileRoutes");
+const projectRoutes = require("./routes/projectRoutes");
 
 const app = express();
 
@@ -55,6 +56,11 @@ app.use(
 app.use(
   "/api/client-profile",
   clientProfileRoutes
+);
+
+app.use(
+  "/api/projects",
+  projectRoutes
 );
 
 // ==================================================
