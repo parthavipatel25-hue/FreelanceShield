@@ -108,35 +108,14 @@ export default function ClientProfileForm() {
     setMessage("");
 
     // =========================================
-    // VALIDATION
+    // NO REQUIRED FIELD VALIDATION
     // =========================================
-
-    if (!fullName.trim()) {
-      alert("Please enter your full name.");
-      return;
-    }
-
-    if (!industry.trim()) {
-      alert("Please select your industry.");
-      return;
-    }
-
-    if (!city.trim()) {
-      alert("Please enter your city.");
-      return;
-    }
-
-    if (!about.trim()) {
-      alert(
-        "Please tell freelancers about yourself or your organization."
-      );
-      return;
-    }
-
-    if (!linkedin.trim()) {
-      alert("Please enter your LinkedIn profile URL.");
-      return;
-    }
+    // Full Name, Company, Industry, City,
+    // About, LinkedIn and other links
+    // can now be left empty.
+    //
+    // Only login/session and role are checked.
+    // =========================================
 
     // =========================================
     // GET LOGGED-IN USER
@@ -185,41 +164,30 @@ export default function ClientProfileForm() {
 
     // =========================================
     // PROFILE DATA
-    //
-    // Skills and Hiring Requirements have
-    // intentionally been removed.
-    // They will be added when posting a project.
     // =========================================
 
     const profileData = {
       user_id,
 
-      fullname: fullName.trim(),
+      fullname: fullName.trim() || null,
 
-      company_name:
-        companyName.trim() || null,
+      company_name: companyName.trim() || null,
 
-      industry: industry.trim(),
+      industry: industry.trim() || null,
 
-      city: city.trim(),
+      city: city.trim() || null,
 
-      about: about.trim(),
+      about: about.trim() || null,
 
-      linkedin_url:
-        linkedin.trim(),
+      linkedin_url: linkedin.trim() || null,
 
-      company_website:
-        companyWebsite.trim() || null,
+      company_website: companyWebsite.trim() || null,
 
-      github_url:
-        github.trim() || null,
+      github_url: github.trim() || null,
 
-      google_drive_url:
-        googleDrive.trim() || null,
+      google_drive_url: googleDrive.trim() || null,
 
-      // No skills
-      // No hiring requirements
-      // No profile image
+      // Profile image is not saved yet.
     };
 
     console.log(
@@ -348,18 +316,20 @@ export default function ClientProfileForm() {
         ========================================= */}
 
         {message && (
-          <div className="
-            mb-6
-            rounded-xl
-            border
-            border-red-200
-            bg-red-50
-            px-4
-            py-3
-            text-sm
-            font-medium
-            text-red-600
-          ">
+          <div
+            className="
+              mb-6
+              rounded-xl
+              border
+              border-red-200
+              bg-red-50
+              px-4
+              py-3
+              text-sm
+              font-medium
+              text-red-600
+            "
+          >
             {message}
           </div>
         )}
@@ -373,50 +343,56 @@ export default function ClientProfileForm() {
               PROFILE PICTURE
           ========================================= */}
 
-          <section className="
-            rounded-2xl
-            border
-            border-gray-200
-            bg-white
-            p-6
-            shadow-sm
-            sm:p-8
-          ">
-
-            <h2 className="
-              mb-6
-              text-xl
-              font-semibold
-              text-gray-900
-            ">
+          <section
+            className="
+              rounded-2xl
+              border
+              border-gray-200
+              bg-white
+              p-6
+              shadow-sm
+              sm:p-8
+            "
+          >
+            <h2
+              className="
+                mb-6
+                text-xl
+                font-semibold
+                text-gray-900
+              "
+            >
               Profile Picture
             </h2>
 
-            <div className="
-              flex
-              flex-col
-              items-center
-              justify-center
-            ">
+            <div
+              className="
+                flex
+                flex-col
+                items-center
+                justify-center
+              "
+            >
 
               <div className="relative mb-5">
 
-                <div className="
-                  flex
-                  h-28
-                  w-28
-                  items-center
-                  justify-center
-                  overflow-hidden
-                  rounded-full
-                  border-4
-                  border-emerald-50
-                  bg-emerald-100
-                  text-3xl
-                  font-bold
-                  text-emerald-700
-                ">
-
+                <div
+                  className="
+                    flex
+                    h-28
+                    w-28
+                    items-center
+                    justify-center
+                    overflow-hidden
+                    rounded-full
+                    border-4
+                    border-emerald-50
+                    bg-emerald-100
+                    text-3xl
+                    font-bold
+                    text-emerald-700
+                  "
+                >
                   {profileImage ? (
                     <img
                       src={profileImage}
@@ -426,7 +402,6 @@ export default function ClientProfileForm() {
                   ) : (
                     "C"
                   )}
-
                 </div>
 
                 {profileImage && (
@@ -457,24 +432,25 @@ export default function ClientProfileForm() {
 
               </div>
 
-              <label className="
-                inline-flex
-                cursor-pointer
-                items-center
-                gap-2
-                rounded-lg
-                border
-                border-emerald-200
-                bg-white
-                px-5
-                py-2.5
-                text-sm
-                font-medium
-                text-emerald-700
-                transition
-                hover:bg-emerald-50
-              ">
-
+              <label
+                className="
+                  inline-flex
+                  cursor-pointer
+                  items-center
+                  gap-2
+                  rounded-lg
+                  border
+                  border-emerald-200
+                  bg-white
+                  px-5
+                  py-2.5
+                  text-sm
+                  font-medium
+                  text-emerald-700
+                  transition
+                  hover:bg-emerald-50
+                "
+              >
                 <Camera size={17} />
 
                 {profileImage
@@ -488,22 +464,25 @@ export default function ClientProfileForm() {
                   onChange={handleProfileImage}
                   className="hidden"
                 />
-
               </label>
 
-              <p className="
-                mt-2
-                text-xs
-                text-gray-400
-              ">
+              <p
+                className="
+                  mt-2
+                  text-xs
+                  text-gray-400
+                "
+              >
                 JPG, PNG or WEBP • Max 5MB
               </p>
 
-              <p className="
-                mt-1
-                text-xs
-                text-gray-400
-              ">
+              <p
+                className="
+                  mt-1
+                  text-xs
+                  text-gray-400
+                "
+              >
                 Profile picture will not be saved yet.
               </p>
 
@@ -514,22 +493,26 @@ export default function ClientProfileForm() {
               CLIENT INFORMATION
           ========================================= */}
 
-          <section className="
-            rounded-2xl
-            border
-            border-gray-200
-            bg-white
-            p-6
-            shadow-sm
-            sm:p-8
-          ">
+          <section
+            className="
+              rounded-2xl
+              border
+              border-gray-200
+              bg-white
+              p-6
+              shadow-sm
+              sm:p-8
+            "
+          >
 
-            <h2 className="
-              mb-6
-              text-xl
-              font-semibold
-              text-gray-900
-            ">
+            <h2
+              className="
+                mb-6
+                text-xl
+                font-semibold
+                text-gray-900
+              "
+            >
               Client Information
             </h2>
 
@@ -560,7 +543,6 @@ export default function ClientProfileForm() {
                     setFullName(e.target.value)
                   }
                   placeholder="Enter your full name"
-                  required
                   className="
                     w-full
                     rounded-lg
@@ -623,12 +605,14 @@ export default function ClientProfileForm() {
 
               {/* INDUSTRY + CITY */}
 
-              <div className="
-                grid
-                grid-cols-1
-                gap-6
-                md:grid-cols-2
-              ">
+              <div
+                className="
+                  grid
+                  grid-cols-1
+                  gap-6
+                  md:grid-cols-2
+                "
+              >
 
                 {/* INDUSTRY */}
 
@@ -673,6 +657,10 @@ export default function ClientProfileForm() {
                         focus:ring-emerald-100
                       "
                     >
+                      <option value="">
+                        Select Industry
+                      </option>
+
                       <option value="Technology">
                         Technology
                       </option>
@@ -742,7 +730,6 @@ export default function ClientProfileForm() {
                       setCity(e.target.value)
                     }
                     placeholder="Ahmedabad"
-                    required
                     className="
                       w-full
                       rounded-lg
@@ -788,7 +775,6 @@ export default function ClientProfileForm() {
                   }
                   maxLength={500}
                   placeholder="Tell freelancers about yourself or your organization..."
-                  required
                   className="
                     w-full
                     resize-none
@@ -807,12 +793,14 @@ export default function ClientProfileForm() {
                   "
                 />
 
-                <p className="
-                  mt-1
-                  text-right
-                  text-xs
-                  text-gray-400
-                ">
+                <p
+                  className="
+                    mt-1
+                    text-right
+                    text-xs
+                    text-gray-400
+                  "
+                >
                   {about.length}/500
                 </p>
               </div>
@@ -824,13 +812,16 @@ export default function ClientProfileForm() {
               PROFESSIONAL LINKS
           ========================================= */}
 
-          <section className="
-            rounded-2xl
-            border
-            border-gray-200
-            bg-white
-            shadow-sm
-          ">
+          <section
+            className="
+              overflow-hidden
+              rounded-2xl
+              border
+              border-gray-200
+              bg-white
+              shadow-sm
+            "
+          >
 
             <button
               type="button"
@@ -849,41 +840,49 @@ export default function ClientProfileForm() {
               aria-expanded={showLinks}
             >
 
-              <div className="
-                flex
-                items-center
-                gap-3
-              ">
-
-                <div className="
+              <div
+                className="
                   flex
-                  h-10
-                  w-10
-                  shrink-0
                   items-center
-                  justify-center
-                  rounded-lg
-                  bg-emerald-50
-                  text-emerald-600
-                ">
+                  gap-3
+                "
+              >
+
+                <div
+                  className="
+                    flex
+                    h-10
+                    w-10
+                    shrink-0
+                    items-center
+                    justify-center
+                    rounded-lg
+                    bg-emerald-50
+                    text-emerald-600
+                  "
+                >
                   <LinkIcon size={20} />
                 </div>
 
                 <div>
 
-                  <h2 className="
-                    text-xl
-                    font-semibold
-                    text-gray-900
-                  ">
+                  <h2
+                    className="
+                      text-xl
+                      font-semibold
+                      text-gray-900
+                    "
+                  >
                     Professional Links
                   </h2>
 
-                  <p className="
-                    mt-1
-                    text-sm
-                    text-gray-500
-                  ">
+                  <p
+                    className="
+                      mt-1
+                      text-sm
+                      text-gray-500
+                    "
+                  >
                     Connect your professional profiles
                   </p>
 
@@ -906,15 +905,17 @@ export default function ClientProfileForm() {
             </button>
 
             {showLinks && (
-              <div className="
-                border-t
-                border-gray-100
-                px-6
-                pb-6
-                pt-6
-                sm:px-8
-                sm:pb-8
-              ">
+              <div
+                className="
+                  border-t
+                  border-gray-100
+                  px-6
+                  pb-6
+                  pt-6
+                  sm:px-8
+                  sm:pb-8
+                "
+              >
 
                 {/* =====================================
                     LINKEDIN
@@ -933,10 +934,6 @@ export default function ClientProfileForm() {
                     "
                   >
                     LinkedIn Profile
-
-                    <span className="ml-1 text-red-500">
-                      *
-                    </span>
                   </label>
 
                   <input
@@ -948,9 +945,6 @@ export default function ClientProfileForm() {
                       setLinkedin(e.target.value)
                     }
                     placeholder="https://linkedin.com/in/username"
-                    required
-                    pattern="https?://(www\.)?linkedin\.com/.*"
-                    title="Please enter a valid LinkedIn profile URL."
                     className="
                       w-full
                       rounded-lg
@@ -968,12 +962,14 @@ export default function ClientProfileForm() {
                     "
                   />
 
-                  <p className="
-                    mt-2
-                    text-xs
-                    text-gray-400
-                  ">
-                    LinkedIn profile is required.
+                  <p
+                    className="
+                      mt-2
+                      text-xs
+                      text-gray-400
+                    "
+                  >
+                    Optional
                   </p>
 
                 </div>
@@ -984,20 +980,24 @@ export default function ClientProfileForm() {
 
                 <div className="mt-7">
 
-                  <p className="
-                    mb-4
-                    text-sm
-                    font-medium
-                    text-gray-700
-                  ">
+                  <p
+                    className="
+                      mb-4
+                      text-sm
+                      font-medium
+                      text-gray-700
+                    "
+                  >
                     Optional Links
                   </p>
 
-                  <div className="
-                    flex
-                    flex-wrap
-                    gap-3
-                  ">
+                  <div
+                    className="
+                      flex
+                      flex-wrap
+                      gap-3
+                    "
+                  >
 
                     {/* COMPANY WEBSITE BUTTON */}
 
@@ -1100,39 +1100,75 @@ export default function ClientProfileForm() {
                   {/* =====================================
                       COMPANY WEBSITE
                   ===================================== */}
-{showCompanyWebsite && (
-  <div className="mt-5">
-    <div className="mb-2 flex items-center justify-between">
-      <label
-        htmlFor="companyWebsite"
-        className="text-sm font-medium text-gray-700"
-      >
-        Company Website
-      </label>
 
-      <button
-        type="button"
-        onClick={() => {
-          setShowCompanyWebsite(false);
-          setCompanyWebsite("");
-        }}
-        className="text-xs font-medium text-red-500 hover:text-red-600"
-      >
-        Remove
-      </button>
-    </div>
+                  {showCompanyWebsite && (
+                    <div className="mt-5">
 
-    <input
-      id="companyWebsite"
-      name="companyWebsite"
-      type="url"
-      value={companyWebsite}
-      onChange={(e) => setCompanyWebsite(e.target.value)}
-      placeholder="https://yourcompany.com"
-      className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-800 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
-    />
-  </div>
-)}
+                      <div
+                        className="
+                          mb-2
+                          flex
+                          items-center
+                          justify-between
+                        "
+                      >
+
+                        <label
+                          htmlFor="companyWebsite"
+                          className="
+                            text-sm
+                            font-medium
+                            text-gray-700
+                          "
+                        >
+                          Company Website
+                        </label>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowCompanyWebsite(false);
+                            setCompanyWebsite("");
+                          }}
+                          className="
+                            text-xs
+                            font-medium
+                            text-red-500
+                            hover:text-red-600
+                          "
+                        >
+                          Remove
+                        </button>
+
+                      </div>
+
+                      <input
+                        id="companyWebsite"
+                        name="companyWebsite"
+                        type="url"
+                        value={companyWebsite}
+                        onChange={(e) =>
+                          setCompanyWebsite(e.target.value)
+                        }
+                        placeholder="https://yourcompany.com"
+                        className="
+                          w-full
+                          rounded-lg
+                          border
+                          border-gray-300
+                          px-4
+                          py-3
+                          text-gray-800
+                          outline-none
+                          transition
+                          focus:border-emerald-500
+                          focus:ring-2
+                          focus:ring-emerald-100
+                        "
+                      />
+
+                    </div>
+                  )}
 
                   {/* =====================================
                       GITHUB
@@ -1141,12 +1177,14 @@ export default function ClientProfileForm() {
                   {showGithub && (
                     <div className="mt-5">
 
-                      <div className="
-                        mb-2
-                        flex
-                        items-center
-                        justify-between
-                      ">
+                      <div
+                        className="
+                          mb-2
+                          flex
+                          items-center
+                          justify-between
+                        "
+                      >
 
                         <label
                           htmlFor="github"
@@ -1205,7 +1243,78 @@ export default function ClientProfileForm() {
                     </div>
                   )}
 
+                  {/* =====================================
+                      GOOGLE DRIVE
+                  ===================================== */}
 
+                  {showGoogleDrive && (
+                    <div className="mt-5">
+
+                      <div
+                        className="
+                          mb-2
+                          flex
+                          items-center
+                          justify-between
+                        "
+                      >
+
+                        <label
+                          htmlFor="googleDrive"
+                          className="
+                            text-sm
+                            font-medium
+                            text-gray-700
+                          "
+                        >
+                          Google Drive
+                        </label>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowGoogleDrive(false);
+                            setGoogleDrive("");
+                          }}
+                          className="
+                            text-xs
+                            font-medium
+                            text-red-500
+                            hover:text-red-600
+                          "
+                        >
+                          Remove
+                        </button>
+
+                      </div>
+
+                      <input
+                        id="googleDrive"
+                        name="googleDrive"
+                        type="url"
+                        value={googleDrive}
+                        onChange={(e) =>
+                          setGoogleDrive(e.target.value)
+                        }
+                        placeholder="https://drive.google.com/..."
+                        className="
+                          w-full
+                          rounded-lg
+                          border
+                          border-gray-300
+                          px-4
+                          py-3
+                          text-gray-800
+                          outline-none
+                          transition
+                          focus:border-emerald-500
+                          focus:ring-2
+                          focus:ring-emerald-100
+                        "
+                      />
+
+                    </div>
+                  )}
 
                 </div>
 
@@ -1218,15 +1327,17 @@ export default function ClientProfileForm() {
               CREATE PROFILE
           ========================================= */}
 
-          <div className="
-            rounded-2xl
-            border
-            border-gray-200
-            bg-white
-            p-5
-            shadow-sm
-            sm:p-6
-          ">
+          <div
+            className="
+              rounded-2xl
+              border
+              border-gray-200
+              bg-white
+              p-5
+              shadow-sm
+              sm:p-6
+            "
+          >
 
             <button
               type="submit"

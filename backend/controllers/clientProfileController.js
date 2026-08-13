@@ -15,10 +15,6 @@ const createClientProfile = async (req, res) => {
       about,
       linkedin_url,
       company_website,
-      github_url,
-      google_drive_url,
-      hiring_requirements,
-      preferred_skills,
     } = req.body;
 
     console.log("=================================");
@@ -27,20 +23,13 @@ const createClientProfile = async (req, res) => {
     console.log("=================================");
 
     // ============================================
-    // REQUIRED FIELDS
+    // CHECK USER ID
     // ============================================
 
-    if (
-      !user_id ||
-      !fullname ||
-      !industry ||
-      !city ||
-      !about ||
-      !linkedin_url
-    ) {
+    if (!user_id) {
       return res.status(400).json({
         success: false,
-        message: "Please fill all required fields.",
+        message: "User ID is required.",
       });
     }
 
@@ -96,23 +85,8 @@ const createClientProfile = async (req, res) => {
     }
 
     // ============================================
-    // ARRAY DATA
-    // ============================================
-
-    const requirements = Array.isArray(
-      hiring_requirements
-    )
-      ? hiring_requirements
-      : [];
-
-    const skills = Array.isArray(
-      preferred_skills
-    )
-      ? preferred_skills
-      : [];
-
-    // ============================================
-    // INSERT
+    // INSERT CLIENT PROFILE
+    // ALL PROFILE FIELDS ARE OPTIONAL
     // ============================================
 
     const result = await pool.query(
@@ -126,11 +100,7 @@ const createClientProfile = async (req, res) => {
         about,
         profile_image,
         linkedin_url,
-        company_website,
-        github_url,
-        google_drive_url,
-        hiring_requirements,
-        preferred_skills
+        company_website
       )
       VALUES (
         $1,
@@ -141,32 +111,30 @@ const createClientProfile = async (req, res) => {
         $6,
         $7,
         $8,
-        $9,
-        $10,
-        $11,
-        $12,
-        $13
+        $9
       )
       RETURNING *
       `,
       [
         user_id,
-        fullname.trim(),
+
+        fullname?.trim() || null,
+
         company_name?.trim() || null,
-        industry.trim(),
-        city.trim(),
-        about.trim(),
+
+        industry?.trim() || null,
+
+        city?.trim() || null,
+
+        about?.trim() || null,
 
         // Profile picture intentionally NULL for now
         null,
 
-        linkedin_url.trim(),
-        company_website?.trim() || null,
-        github_url?.trim() || null,
-        google_drive_url?.trim() || null,
+        linkedin_url?.trim() || null,
 
-        requirements,
-        skills,
+        // Company website is optional
+        company_website?.trim() || null,
       ]
     );
 
@@ -245,33 +213,28 @@ const updateClientProfile = async (req, res) => {
     const { user_id } = req.params;
 
     const {
-      fullname,
       company_name,
       industry,
       city,
       about,
       linkedin_url,
       company_website,
-      github_url,
-      google_drive_url,
-      hiring_requirements,
-      preferred_skills,
     } = req.body;
 
+    console.log("=================================");
+    console.log("UPDATE CLIENT PROFILE");
+    console.log("USER ID:", user_id);
+    console.log("BODY:", req.body);
+    console.log("=================================");
+
     // ============================================
-    // REQUIRED FIELDS
+    // CHECK USER ID
     // ============================================
 
-    if (
-      !fullname ||
-      !industry ||
-      !city ||
-      !about ||
-      !linkedin_url
-    ) {
+    if (!user_id) {
       return res.status(400).json({
         success: false,
-        message: "Please fill all required fields.",
+        message: "User ID is required.",
       });
     }
 
@@ -281,7 +244,7 @@ const updateClientProfile = async (req, res) => {
 
     const existingProfile = await pool.query(
       `
-      SELECT id, profile_image
+      SELECT id, profile_image, fullname
       FROM client_profiles
       WHERE user_id = $1
       `,
@@ -296,65 +259,50 @@ const updateClientProfile = async (req, res) => {
     }
 
     // ============================================
-    // ARRAY DATA
-    // ============================================
-
-    const requirements = Array.isArray(
-      hiring_requirements
-    )
-      ? hiring_requirements
-      : [];
-
-    const skills = Array.isArray(
-      preferred_skills
-    )
-      ? preferred_skills
-      : [];
-
-    // ============================================
-    // UPDATE
+    // UPDATE CLIENT PROFILE
+    // ALL PROFILE FIELDS ARE OPTIONAL
     // ============================================
 
     const result = await pool.query(
       `
       UPDATE client_profiles
       SET
-        fullname = $1,
-        company_name = $2,
-        industry = $3,
-        city = $4,
-        about = $5,
+        company_name = $1,
+        industry = $2,
+        city = $3,
+        about = $4,
 
-        -- Keep profile image unchanged
-        profile_image = $6,
+        -- Keep existing profile image
+        profile_image = $5,
 
-        linkedin_url = $7,
-        company_website = $8,
-        github_url = $9,
-        google_drive_url = $10,
-        hiring_requirements = $11,
-        preferred_skills = $12,
+        linkedin_url = $6,
+
+        -- Company website is optional
+        company_website = $7,
+
         updated_at = CURRENT_TIMESTAMP
-      WHERE user_id = $13
+
+      WHERE user_id = $8
+
       RETURNING *
       `,
       [
-        fullname.trim(),
         company_name?.trim() || null,
-        industry.trim(),
-        city.trim(),
-        about.trim(),
+
+        industry?.trim() || null,
+
+        city?.trim() || null,
+
+        about?.trim() || null,
 
         // Keep current profile image
         existingProfile.rows[0].profile_image,
 
-        linkedin_url.trim(),
-        company_website?.trim() || null,
-        github_url?.trim() || null,
-        google_drive_url?.trim() || null,
+        linkedin_url?.trim() || null,
 
-        requirements,
-        skills,
+        // Company website optional
+        company_website?.trim() || null,
+
         user_id,
       ]
     );

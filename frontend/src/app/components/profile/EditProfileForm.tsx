@@ -74,6 +74,176 @@ interface EditProfileFormProps {
 const API_BASE_URL = "http://localhost:5000";
 
 // ==================================================
+// CLEAN SINGLE SKILL
+// ==================================================
+
+const cleanSingleSkill = (value: string): string => {
+  return value
+    .replace(/^\s*[\["']+/, "")
+    .replace(/[\]"']+\s*$/, "")
+    .trim();
+};
+
+// ==================================================
+// NORMALIZE SKILLS
+// ==================================================
+
+const normalizeSkills = (
+  value: string[] | string | null | undefined
+): string[] => {
+  if (!value) {
+    return [];
+  }
+
+  const result: string[] = [];
+
+  const addSkill = (skill: unknown) => {
+    if (typeof skill !== "string") {
+      return;
+    }
+
+    const cleaned = cleanSingleSkill(skill);
+
+    if (!cleaned) {
+      return;
+    }
+
+    // Avoid duplicates
+    const exists = result.some(
+      (existing) =>
+        existing.toLowerCase() === cleaned.toLowerCase()
+    );
+
+    if (!exists) {
+      result.push(cleaned);
+    }
+  };
+
+  // ==================================================
+  // ARRAY
+  // ==================================================
+
+  if (Array.isArray(value)) {
+    value.forEach((item) => {
+      if (typeof item !== "string") {
+        return;
+      }
+
+      let current = item.trim();
+
+      if (!current) {
+        return;
+      }
+
+      // ----------------------------------------------
+      // Try JSON parsing
+      // ----------------------------------------------
+
+      try {
+        const parsed = JSON.parse(current);
+
+        if (Array.isArray(parsed)) {
+          parsed.forEach((skill) => {
+            addSkill(skill);
+          });
+
+          return;
+        }
+
+        if (typeof parsed === "string") {
+          addSkill(parsed);
+          return;
+        }
+      } catch {
+        // Not JSON
+      }
+
+      // ----------------------------------------------
+      // If item contains comma-separated values
+      // ----------------------------------------------
+
+      if (current.includes(",")) {
+        current
+          .split(",")
+          .forEach((skill) => addSkill(skill));
+
+        return;
+      }
+
+      addSkill(current);
+    });
+
+    return result;
+  }
+
+  // ==================================================
+  // STRING
+  // ==================================================
+
+  if (typeof value === "string") {
+    let current = value.trim();
+
+    if (!current) {
+      return [];
+    }
+
+    // ----------------------------------------------
+    // Parse multiple layers of JSON
+    // ----------------------------------------------
+
+    for (let i = 0; i < 5; i++) {
+      try {
+        const parsed = JSON.parse(current);
+
+        if (Array.isArray(parsed)) {
+          return normalizeSkills(parsed);
+        }
+
+        if (typeof parsed === "string") {
+          current = parsed.trim();
+          continue;
+        }
+
+        break;
+      } catch {
+        break;
+      }
+    }
+
+    // ----------------------------------------------
+    // Remove outer brackets
+    // ----------------------------------------------
+
+    current = current
+      .replace(/^\s*\[/, "")
+      .replace(/\]\s*$/, "")
+      .trim();
+
+    // ----------------------------------------------
+    // Comma-separated fallback
+    // ----------------------------------------------
+
+    if (current.includes(",")) {
+      current
+        .split(",")
+        .forEach((skill) => addSkill(skill));
+
+      return result;
+    }
+
+    // ----------------------------------------------
+    // Single skill
+    // ----------------------------------------------
+
+    addSkill(current);
+
+    return result;
+  }
+
+  return [];
+};
+
+// ==================================================
 // COMPONENT
 // ==================================================
 
@@ -92,10 +262,12 @@ export default function EditProfileForm({
   // BASIC INFORMATION
   // ==================================================
 
-  const [fullname, setFullname] = useState(user.fullname);
+  const [fullname, setFullname] = useState(
+    user.fullname || ""
+  );
 
   // ==================================================
-  // FREELANCER FIELDS
+  // FREELANCER INFORMATION
   // ==================================================
 
   const [professionalTitle, setProfessionalTitle] =
@@ -103,7 +275,10 @@ export default function EditProfileForm({
 
   const [category, setCategory] = useState("");
 
-  const [skills, setSkills] = useState("");
+  // Always keep skills as an array
+  const [skills, setSkills] = useState<string[]>([]);
+
+  const [skillInput, setSkillInput] = useState("");
 
   // ==================================================
   // RESUME
@@ -116,25 +291,25 @@ export default function EditProfileForm({
     useState("");
 
   // ==================================================
-  // CLIENT FIELDS
+  // CLIENT INFORMATION
   // ==================================================
 
   const [companyName, setCompanyName] = useState("");
-
   const [industry, setIndustry] = useState("");
 
   // ==================================================
-  // COMMON PROFILE FIELDS
+  // COMMON INFORMATION
   // ==================================================
 
   const [city, setCity] = useState("");
-
   const [about, setAbout] = useState("");
-
   const [linkedinUrl, setLinkedinUrl] = useState("");
 
-  const [githubUrl, setGithubUrl] = useState("");
+  // ==================================================
+  // PROFESSIONAL LINKS
+  // ==================================================
 
+  const [githubUrl, setGithubUrl] = useState("");
   const [companyWebsite, setCompanyWebsite] =
     useState("");
 
@@ -143,14 +318,13 @@ export default function EditProfileForm({
   // ==================================================
 
   const [loading, setLoading] = useState(false);
-
   const [profileLoading, setProfileLoading] =
     useState(true);
 
   const [message, setMessage] = useState("");
 
   // ==================================================
-  // CONVERT RESUME URL TO FULL BACKEND URL
+  // RESUME URL
   // ==================================================
 
   const getResumeUrl = (url: string) => {
@@ -158,7 +332,6 @@ export default function EditProfileForm({
       return "";
     }
 
-    // Already a complete URL
     if (
       url.startsWith("http://") ||
       url.startsWith("https://")
@@ -166,14 +339,10 @@ export default function EditProfileForm({
       return url;
     }
 
-    // Backend returned something like:
-    // /uploads/resumes/resume.pdf
     if (url.startsWith("/")) {
       return `${API_BASE_URL}${url}`;
     }
 
-    // Backend returned something like:
-    // uploads/resumes/resume.pdf
     return `${API_BASE_URL}/${url}`;
   };
 
@@ -194,14 +363,19 @@ export default function EditProfileForm({
         const response = await fetch(endpoint);
 
         if (response.status === 404) {
-          setProfileLoading(false);
           return;
+        }
+
+        if (!response.ok) {
+          throw new Error(
+            "Failed to load profile"
+          );
         }
 
         const data = await response.json();
 
         console.log(
-          "EDIT PROFILE DATA:",
+          "EDIT PROFILE RESPONSE:",
           data
         );
 
@@ -231,24 +405,24 @@ export default function EditProfileForm({
             profile.category || ""
           );
 
-          // Skills may be array or string
-          if (Array.isArray(profile.skills)) {
-            setSkills(
-              profile.skills.join(", ")
-            );
-          } else {
-            setSkills(
-              profile.skills || ""
-            );
-          }
+          // ----------------------------------------------
+          // IMPORTANT:
+          // Convert backend skills into clean array
+          // ----------------------------------------------
+
+          const cleanedSkills =
+            normalizeSkills(profile.skills);
+
+          console.log(
+            "NORMALIZED SKILLS:",
+            cleanedSkills
+          );
+
+          setSkills(cleanedSkills);
 
           setGithubUrl(
             profile.github_url || ""
           );
-
-          // ==================================================
-          // EXISTING RESUME
-          // ==================================================
 
           setExistingResumeUrl(
             getResumeUrl(
@@ -270,10 +444,13 @@ export default function EditProfileForm({
             profile.industry || ""
           );
 
-          // Company website is optional
           setCompanyWebsite(
             profile.company_website || ""
           );
+
+          // Client should not have freelancer skills
+          setSkills([]);
+          setGithubUrl("");
         }
 
         // ==================================================
@@ -318,26 +495,108 @@ export default function EditProfileForm({
   // ==================================================
 
   useEffect(() => {
-    setFullname(user.fullname);
+    setFullname(
+      user.fullname || ""
+    );
   }, [user.fullname]);
 
   // ==================================================
-  // HANDLE RESUME UPLOAD
-  // PDF ONLY
+  // ADD SKILL
+  // ==================================================
+
+  const addSkill = () => {
+    const input = skillInput.trim();
+
+    if (!input) {
+      return;
+    }
+
+    // Support entering:
+    // React
+    // React, Next.js
+    // ["React","Next.js"]
+
+    const newSkills = normalizeSkills(input);
+
+    if (newSkills.length === 0) {
+      setSkillInput("");
+      return;
+    }
+
+    setSkills((previousSkills) => {
+      const combined = [
+        ...previousSkills,
+        ...newSkills,
+      ];
+
+      return normalizeSkills(combined);
+    });
+
+    setSkillInput("");
+    setMessage("");
+  };
+
+  // ==================================================
+  // SKILL KEY DOWN
+  // ==================================================
+
+  const handleSkillKeyDown = (
+    event: React.KeyboardEvent<HTMLInputElement>
+  ) => {
+    if (
+      event.key === "Enter" ||
+      event.key === ","
+    ) {
+      event.preventDefault();
+      addSkill();
+      return;
+    }
+
+    if (
+      event.key === "Backspace" &&
+      !skillInput &&
+      skills.length > 0
+    ) {
+      setSkills((previousSkills) =>
+        previousSkills.slice(
+          0,
+          previousSkills.length - 1
+        )
+      );
+    }
+  };
+
+  // ==================================================
+  // REMOVE SKILL
+  // ==================================================
+
+  const removeSkill = (
+    skillToRemove: string
+  ) => {
+    setSkills((previousSkills) =>
+      previousSkills.filter(
+        (skill) =>
+          skill.toLowerCase() !==
+          skillToRemove.toLowerCase()
+      )
+    );
+
+    setMessage("");
+  };
+
+  // ==================================================
+  // RESUME CHANGE
   // ==================================================
 
   const handleResumeChange = (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
-    const file = event.target.files?.[0];
+    const file =
+      event.target.files?.[0];
 
     if (!file) {
       return;
     }
-
-    // ==================================================
-    // PDF ONLY
-    // ==================================================
 
     const isPDF =
       file.type === "application/pdf" ||
@@ -351,30 +610,26 @@ export default function EditProfileForm({
       );
 
       event.target.value = "";
-
       setResumeFile(null);
 
       return;
     }
 
-    // ==================================================
-    // MAXIMUM 5MB
-    // ==================================================
-
-    if (file.size > 5 * 1024 * 1024) {
+    if (
+      file.size >
+      5 * 1024 * 1024
+    ) {
       alert(
         "Resume PDF must be less than 5MB."
       );
 
       event.target.value = "";
-
       setResumeFile(null);
 
       return;
     }
 
     setResumeFile(file);
-
     setMessage("");
   };
 
@@ -399,134 +654,16 @@ export default function EditProfileForm({
     setMessage("");
 
     try {
-      // ==================================================
-      // COMMON VALIDATION
-      // ==================================================
-
-      if (!fullname.trim()) {
-        setMessage(
-          "Full name is required."
-        );
-
-        setLoading(false);
-        return;
-      }
-
-      if (!city.trim()) {
-        setMessage(
-          "City is required."
-        );
-
-        setLoading(false);
-        return;
-      }
-
-      if (!about.trim()) {
-        setMessage(
-          "About section is required."
-        );
-
-        setLoading(false);
-        return;
-      }
-
-      // ==================================================
-      // FREELANCER VALIDATION
-      // ==================================================
-
-      if (isFreelancer) {
-        if (!professionalTitle.trim()) {
-          setMessage(
-            "Professional title is required."
-          );
-
-          setLoading(false);
-          return;
-        }
-
-        if (!category.trim()) {
-          setMessage(
-            "Category is required."
-          );
-
-          setLoading(false);
-          return;
-        }
-
-        if (!skills.trim()) {
-          setMessage(
-            "Skills are required."
-          );
-
-          setLoading(false);
-          return;
-        }
-
-        if (!linkedinUrl.trim()) {
-          setMessage(
-            "LinkedIn URL is required."
-          );
-
-          setLoading(false);
-          return;
-        }
-      }
-
-      // ==================================================
-      // CLIENT VALIDATION
-      // ==================================================
-
-      if (isClient) {
-        if (!companyName.trim()) {
-          setMessage(
-            "Company / Organization name is required."
-          );
-
-          setLoading(false);
-          return;
-        }
-
-        if (!industry.trim()) {
-          setMessage(
-            "Industry is required."
-          );
-
-          setLoading(false);
-          return;
-        }
-
-        if (!linkedinUrl.trim()) {
-          setMessage(
-            "LinkedIn URL is required."
-          );
-
-          setLoading(false);
-          return;
-        }
-
-        // IMPORTANT:
-        // Company Website is OPTIONAL.
-        // No validation is required.
-      }
-
-      // ==================================================
-      // PROFILE API ENDPOINT
-      // ==================================================
-
       const endpoint = isFreelancer
         ? `${API_BASE_URL}/api/freelancer-profile/${user.id}`
         : `${API_BASE_URL}/api/client-profile/${user.id}`;
 
       // ==================================================
-      // FREELANCER UPDATE
+      // FREELANCER
       // ==================================================
 
       if (isFreelancer) {
         const formData = new FormData();
-
-        // --------------------------------------------------
-        // BASIC PROFILE INFORMATION
-        // --------------------------------------------------
 
         formData.append(
           "professional_title",
@@ -553,32 +690,23 @@ export default function EditProfileForm({
           linkedinUrl.trim()
         );
 
-        // --------------------------------------------------
-        // SKILLS
-        // --------------------------------------------------
+        // ==================================================
+        // IMPORTANT:
+        // Skills are sent as ONE clean JSON array
+        // ==================================================
 
-        const skillsArray = skills
-          .split(",")
-          .map((skill) => skill.trim())
-          .filter(Boolean);
+        const cleanedSkills =
+          normalizeSkills(skills);
 
         formData.append(
           "skills",
-          JSON.stringify(skillsArray)
+          JSON.stringify(cleanedSkills)
         );
-
-        // --------------------------------------------------
-        // OPTIONAL GITHUB
-        // --------------------------------------------------
 
         formData.append(
           "github_url",
           githubUrl.trim()
         );
-
-        // --------------------------------------------------
-        // RESUME PDF
-        // --------------------------------------------------
 
         if (resumeFile) {
           formData.append(
@@ -588,14 +716,13 @@ export default function EditProfileForm({
         }
 
         console.log(
-          "Updating freelancer profile..."
+          "SKILLS SENT TO BACKEND:",
+          cleanedSkills
         );
 
         const profileResponse =
           await fetch(endpoint, {
             method: "PUT",
-
-            // Do NOT set Content-Type manually.
             body: formData,
           });
 
@@ -624,35 +751,31 @@ export default function EditProfileForm({
           }
 
           setMessage(errorMessage);
-
-          setLoading(false);
-
           return;
         }
       }
 
       // ==================================================
-      // CLIENT UPDATE
+      // CLIENT
       // ==================================================
 
       if (isClient) {
         const body = {
           company_name:
-            companyName.trim(),
+            companyName.trim() || null,
 
           industry:
-            industry.trim(),
+            industry.trim() || null,
 
           city:
-            city.trim(),
+            city.trim() || null,
 
           about:
-            about.trim(),
+            about.trim() || null,
 
           linkedin_url:
-            linkedinUrl.trim(),
+            linkedinUrl.trim() || null,
 
-          // OPTIONAL
           company_website:
             companyWebsite.trim() || null,
         };
@@ -699,9 +822,6 @@ export default function EditProfileForm({
           }
 
           setMessage(errorMessage);
-
-          setLoading(false);
-
           return;
         }
       }
@@ -744,7 +864,7 @@ export default function EditProfileForm({
       }
 
       // ==================================================
-      // UPDATE LOCAL STORAGE
+      // UPDATE LOCAL USER
       // ==================================================
 
       const updatedUser: User = {
@@ -768,11 +888,10 @@ export default function EditProfileForm({
         "Profile updated successfully."
       );
 
-      // Reset selected file
       setResumeFile(null);
 
       // ==================================================
-      // RELOAD PROFILE TO GET UPDATED RESUME
+      // RELOAD PROFILE
       // ==================================================
 
       if (isFreelancer) {
@@ -789,6 +908,28 @@ export default function EditProfileForm({
             const refreshedProfile: ProfileData =
               refreshedData?.profile ||
               refreshedData;
+
+            // ------------------------------------------
+            // Reload clean skills
+            // ------------------------------------------
+
+            const refreshedSkills =
+              normalizeSkills(
+                refreshedProfile?.skills
+              );
+
+            console.log(
+              "REFRESHED SKILLS:",
+              refreshedSkills
+            );
+
+            setSkills(
+              refreshedSkills
+            );
+
+            // ------------------------------------------
+            // Reload resume
+            // ------------------------------------------
 
             setExistingResumeUrl(
               getResumeUrl(
@@ -819,7 +960,7 @@ export default function EditProfileForm({
   };
 
   // ==================================================
-  // LOADING SCREEN
+  // LOADING
   // ==================================================
 
   if (profileLoading) {
@@ -888,6 +1029,7 @@ export default function EditProfileForm({
 
       <form
         onSubmit={handleSubmit}
+        noValidate
         className="space-y-7"
       >
 
@@ -898,7 +1040,6 @@ export default function EditProfileForm({
         <div>
 
           <div className="mb-4 flex items-center gap-2">
-
             <User
               size={18}
               className="text-emerald-600"
@@ -907,7 +1048,6 @@ export default function EditProfileForm({
             <h3 className="text-base font-bold text-gray-800">
               Personal Information
             </h3>
-
           </div>
 
           <div className="grid gap-5 md:grid-cols-2">
@@ -935,7 +1075,6 @@ export default function EditProfileForm({
                 }}
                 placeholder="Enter your full name"
                 className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm text-gray-700 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 sm:text-base"
-                required
               />
             </div>
 
@@ -1010,7 +1149,6 @@ export default function EditProfileForm({
                   }}
                   placeholder="e.g. Full Stack Developer"
                   className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm text-gray-700 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 sm:text-base"
-                  required
                 />
               </div>
 
@@ -1037,11 +1175,12 @@ export default function EditProfileForm({
                   }}
                   placeholder="e.g. Web Development"
                   className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm text-gray-700 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 sm:text-base"
-                  required
                 />
               </div>
 
-              {/* SKILLS */}
+              {/* ==================================================
+                  SKILLS
+              ================================================== */}
 
               <div className="md:col-span-2">
 
@@ -1057,32 +1196,104 @@ export default function EditProfileForm({
                   Skills
                 </label>
 
-                <input
-                  id="skills"
-                  type="text"
-                  value={skills}
-                  onChange={(e) => {
-                    setSkills(
-                      e.target.value
-                    );
+                <div className="rounded-xl border border-gray-300 bg-white p-3 transition focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-100">
 
-                    setMessage("");
-                  }}
-                  placeholder="React, Next.js, Node.js, PostgreSQL"
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm text-gray-700 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 sm:text-base"
-                  required
-                />
+                  {/* ==================================================
+                      SKILL TAGS
+                  ================================================== */}
 
-                <p className="mt-1 text-xs text-gray-400">
-                  Separate multiple skills with commas.
-                </p>
+                  {skills.length > 0 && (
+                    <div className="mb-2 flex flex-wrap gap-2">
+
+                      {skills.map(
+                        (skill, index) => (
+                          <span
+                            key={`${skill}-${index}`}
+                            className="inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-700"
+                          >
+
+                            <span>
+                              {skill}
+                            </span>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                removeSkill(
+                                  skill
+                                )
+                              }
+                              className="flex h-5 w-5 items-center justify-center rounded-full text-emerald-500 transition hover:bg-red-100 hover:text-red-500"
+                              aria-label={`Remove ${skill}`}
+                            >
+                              <X size={13} />
+                            </button>
+
+                          </span>
+                        )
+                      )}
+
+                    </div>
+                  )}
+
+                  {/* ==================================================
+                      SKILL INPUT
+                  ================================================== */}
+
+                  <input
+                    id="skills"
+                    type="text"
+                    value={skillInput}
+                    onChange={(e) => {
+                      setSkillInput(
+                        e.target.value
+                      );
+
+                      setMessage("");
+                    }}
+                    onKeyDown={
+                      handleSkillKeyDown
+                    }
+                    onBlur={() => {
+                      if (
+                        skillInput.trim()
+                      ) {
+                        addSkill();
+                      }
+                    }}
+                    placeholder={
+                      skills.length === 0
+                        ? "Type a skill and press Enter..."
+                        : "Add another skill..."
+                    }
+                    className="w-full border-none bg-transparent px-1 py-2 text-sm text-gray-700 outline-none placeholder:text-gray-400 sm:text-base"
+                  />
+
+                </div>
+
+                <div className="mt-2 flex items-center justify-between">
+
+                  <p className="text-xs text-gray-400">
+                    Press Enter or comma to add each skill.
+                  </p>
+
+                  {skills.length > 0 && (
+                    <p className="text-xs font-medium text-emerald-600">
+                      {skills.length}{" "}
+                      {skills.length === 1
+                        ? "skill"
+                        : "skills"}
+                    </p>
+                  )}
+
+                </div>
 
               </div>
 
             </div>
 
             {/* ==================================================
-                RESUME UPLOAD
+                RESUME
             ================================================== */}
 
             <div className="mt-6">
@@ -1100,8 +1311,6 @@ export default function EditProfileForm({
               </label>
 
               <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-5">
-
-                {/* UPLOAD AREA */}
 
                 <label
                   htmlFor="resume"
@@ -1124,13 +1333,15 @@ export default function EditProfileForm({
                     id="resume"
                     type="file"
                     accept=".pdf,application/pdf"
-                    onChange={handleResumeChange}
+                    onChange={
+                      handleResumeChange
+                    }
                     className="hidden"
                   />
 
                 </label>
 
-                {/* SELECTED NEW RESUME */}
+                {/* NEW RESUME */}
 
                 {resumeFile && (
                   <div className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
@@ -1161,7 +1372,6 @@ export default function EditProfileForm({
                         removeSelectedResume
                       }
                       className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-red-500 transition hover:bg-red-100"
-                      aria-label="Remove selected resume"
                     >
                       <X size={17} />
                     </button>
@@ -1197,18 +1407,13 @@ export default function EditProfileForm({
 
                         </div>
 
-                        {/* FIXED RESUME LINK */}
-
                         <a
                           href={existingResumeUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-emerald-200 px-3 py-2 text-xs font-semibold text-emerald-600 transition hover:bg-emerald-50"
                         >
-                          <ExternalLink
-                            size={14}
-                          />
-
+                          <ExternalLink size={14} />
                           View Resume
                         </a>
 
@@ -1273,7 +1478,6 @@ export default function EditProfileForm({
                   }}
                   placeholder="Enter company or organization name"
                   className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm text-gray-700 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 sm:text-base"
-                  required
                 />
               </div>
 
@@ -1300,7 +1504,6 @@ export default function EditProfileForm({
                   }}
                   placeholder="e.g. IT, Finance, Education"
                   className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm text-gray-700 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 sm:text-base"
-                  required
                 />
               </div>
 
@@ -1310,7 +1513,7 @@ export default function EditProfileForm({
         )}
 
         {/* ==================================================
-            LOCATION + ABOUT
+            PROFILE DETAILS
         ================================================== */}
 
         <div className="border-t border-gray-100 pt-7">
@@ -1333,6 +1536,7 @@ export default function EditProfileForm({
             {/* CITY */}
 
             <div>
+
               <label
                 htmlFor="city"
                 className="mb-2 block text-sm font-medium text-gray-700"
@@ -1353,8 +1557,8 @@ export default function EditProfileForm({
                 }}
                 placeholder="Enter your city"
                 className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm text-gray-700 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 sm:text-base"
-                required
               />
+
             </div>
 
             {/* ABOUT */}
@@ -1365,12 +1569,14 @@ export default function EditProfileForm({
                 htmlFor="about"
                 className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700"
               >
+
                 <FileText
                   size={16}
                   className="text-emerald-600"
                 />
 
                 About
+
               </label>
 
               <textarea
@@ -1390,12 +1596,12 @@ export default function EditProfileForm({
                 }
                 rows={5}
                 className="w-full resize-y rounded-xl border border-gray-300 px-4 py-3 text-sm leading-6 text-gray-700 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 sm:text-base"
-                required
               />
 
             </div>
 
           </div>
+
         </div>
 
         {/* ==================================================
@@ -1443,12 +1649,11 @@ export default function EditProfileForm({
                 }}
                 placeholder="https://linkedin.com/in/yourname"
                 className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm text-gray-700 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 sm:text-base"
-                required
               />
 
             </div>
 
-            {/* GITHUB - FREELANCER ONLY */}
+            {/* GITHUB */}
 
             {isFreelancer && (
               <div>
@@ -1478,7 +1683,7 @@ export default function EditProfileForm({
               </div>
             )}
 
-            {/* COMPANY WEBSITE - CLIENT ONLY */}
+            {/* COMPANY WEBSITE */}
 
             {isClient && (
               <div>
@@ -1487,15 +1692,18 @@ export default function EditProfileForm({
                   htmlFor="companyWebsite"
                   className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700"
                 >
+
                   <Globe
                     size={16}
                     className="text-emerald-600"
                   />
 
                   Company Website
+
                   <span className="text-xs font-normal text-gray-400">
                     (Optional)
                   </span>
+
                 </label>
 
                 <input
@@ -1517,6 +1725,7 @@ export default function EditProfileForm({
             )}
 
           </div>
+
         </div>
 
         {/* ==================================================

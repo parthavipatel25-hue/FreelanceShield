@@ -25,22 +25,15 @@ const createFreelancerProfile = async (req, res) => {
     console.log("=================================");
 
     // ==================================================
-    // REQUIRED FIELDS
+    // NO REQUIRED FIELD VALIDATION
     // ==================================================
+    // All profile fields are optional.
+    // Only user_id is needed to identify the user.
 
-    if (
-      !user_id ||
-      !professional_title ||
-      !category ||
-      !city ||
-      !skills ||
-      !about ||
-      !linkedin_url
-    ) {
+    if (!user_id) {
       return res.status(400).json({
         success: false,
-        message:
-          "Please fill all required fields.",
+        message: "User ID is required.",
       });
     }
 
@@ -59,6 +52,8 @@ const createFreelancerProfile = async (req, res) => {
     // ==================================================
     // CHECK RESUME
     // ==================================================
+    // Resume is still required during profile creation.
+    // Remove this block too if you want resume to be optional.
 
     if (!resumeFile) {
       return res.status(400).json({
@@ -187,15 +182,25 @@ const createFreelancerProfile = async (req, res) => {
       `,
       [
         user_id,
+
         profile_picture,
-        professional_title.trim(),
-        category.trim(),
-        city.trim(),
-        skills.trim(),
-        about.trim(),
-        linkedin_url.trim(),
+
+        professional_title?.trim() || null,
+
+        category?.trim() || null,
+
+        city?.trim() || null,
+
+        skills?.trim() || null,
+
+        about?.trim() || null,
+
+        linkedin_url?.trim() || null,
+
         github_url?.trim() || null,
+
         google_drive_url?.trim() || null,
+
         resume_url,
       ]
     );
@@ -293,20 +298,14 @@ const updateFreelancerProfile = async (
       google_drive_url,
     } = req.body;
 
-    if (
-      !professional_title ||
-      !category ||
-      !city ||
-      !skills ||
-      !about ||
-      !linkedin_url
-    ) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Please fill all required fields.",
-      });
-    }
+    // ==================================================
+    // NO REQUIRED FIELD VALIDATION
+    // ==================================================
+    // All profile fields are optional.
+
+    // ==================================================
+    // CHECK PROFILE EXISTS
+    // ==================================================
 
     const existingProfile =
       await pool.query(
@@ -380,15 +379,25 @@ const updateFreelancerProfile = async (
       `,
       [
         profile_picture,
-        professional_title.trim(),
-        category.trim(),
-        city.trim(),
-        skills.trim(),
-        about.trim(),
-        linkedin_url.trim(),
+
+        professional_title?.trim() || null,
+
+        category?.trim() || null,
+
+        city?.trim() || null,
+
+        skills?.trim() || null,
+
+        about?.trim() || null,
+
+        linkedin_url?.trim() || null,
+
         github_url?.trim() || null,
+
         google_drive_url?.trim() || null,
+
         resume_url,
+
         userId,
       ]
     );
@@ -493,6 +502,10 @@ const getFreelancerProfileCompletion =
       });
     }
   };
+
+// ==================================================
+// EXPORT
+// ==================================================
 
 module.exports = {
   createFreelancerProfile,

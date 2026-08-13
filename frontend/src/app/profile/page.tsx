@@ -260,18 +260,53 @@ export default function ProfilePage() {
   // SKILLS
   // ==================================================
 
-  const skills: string[] =
-    Array.isArray(profile?.skills)
-      ? profile.skills
-      : typeof profile?.skills ===
-          "string"
-        ? profile.skills
-            .split(",")
-            .map((skill) =>
-              skill.trim()
-            )
-            .filter(Boolean)
-        : [];
+ // ==================================================
+// SKILLS
+// ==================================================
+
+const parseList = (
+  value: string | string[] | null | undefined
+): string[] => {
+  if (!value) return [];
+
+  // Already an array
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => String(item).trim())
+      .filter(Boolean);
+  }
+
+  const trimmedValue = value.trim();
+
+  if (!trimmedValue) return [];
+
+  // Backend JSON string:
+  // ["React","Next.js","Node.js"]
+  try {
+    const parsed = JSON.parse(trimmedValue);
+
+    if (Array.isArray(parsed)) {
+      return parsed
+        .map((item) => String(item).trim())
+        .filter(Boolean);
+    }
+  } catch {
+    // Not JSON, continue with comma-separated parsing
+  }
+
+  // Normal comma-separated string:
+  // React, Next.js, Node.js
+  return trimmedValue
+    .split(",")
+    .map((item) =>
+      item
+        .trim()
+        .replace(/^["']|["']$/g, "")
+    )
+    .filter(Boolean);
+};
+
+const skills = parseList(profile?.skills);
 
   // ==================================================
   // REQUIREMENTS
@@ -1002,11 +1037,22 @@ export default function ProfilePage() {
                   Skills
                 </p>
 
-                <p className="mt-1 text-sm font-semibold leading-6 text-gray-900">
-                  {skills.length > 0
-                    ? skills.join(", ")
-                    : "No skills added"}
-                </p>
+               <div className="mt-2 flex flex-wrap gap-2">
+  {skills.length > 0 ? (
+    skills.map((skill, index) => (
+      <span
+        key={`${skill}-${index}`}
+        className="inline-flex items-center rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-700"
+      >
+        {skill}
+      </span>
+    ))
+  ) : (
+    <p className="text-sm font-medium text-gray-400">
+      No skills added
+    </p>
+  )}
+</div>
 
               </div>
 
