@@ -88,7 +88,8 @@ export default function Sidebar({ role }: SidebarProps) {
     {
       title: "Browse Projects",
       icon: Briefcase,
-      href: "#",
+      
+  href: "/freelancer/browse-projects",
     },
     {
       title: "My Applications",

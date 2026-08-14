@@ -22,10 +22,21 @@ interface User {
   role: "admin" | "freelancer" | "client";
 }
 
+interface Project {
+  id: number;
+  title: string;
+  status?: string;
+}
+
 export default function FreelancerPage() {
   const router = useRouter();
 
   const [user, setUser] = useState<User | null>(null);
+  const [availableJobs, setAvailableJobs] = useState(0);
+
+  // ============================================
+  // GET LOGGED-IN USER
+  // ============================================
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
@@ -52,9 +63,59 @@ export default function FreelancerPage() {
     }
   }, [router]);
 
+  // ============================================
+  // GET AVAILABLE PROJECT COUNT
+  // ============================================
+
+  useEffect(() => {
+    const fetchAvailableJobs = async () => {
+      try {
+        const response = await fetch(
+          "http://localhost:5000/api/projects"
+        );
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+          throw new Error(
+            data.message || "Failed to load available projects."
+          );
+        }
+
+        const projects: Project[] = data.projects || [];
+
+        // Count only open projects
+        const openProjects = projects.filter(
+          (project) =>
+            !project.status ||
+            project.status.toLowerCase() === "open"
+        );
+
+        setAvailableJobs(openProjects.length);
+      } catch (error) {
+        console.error(
+          "FETCH AVAILABLE PROJECTS ERROR:",
+          error
+        );
+
+        setAvailableJobs(0);
+      }
+    };
+
+    fetchAvailableJobs();
+  }, []);
+
+  // ============================================
+  // LOADING
+  // ============================================
+
   if (!user) {
     return null;
   }
+
+  // ============================================
+  // DASHBOARD
+  // ============================================
 
   return (
     <DashboardLayout role="freelancer">
@@ -75,7 +136,6 @@ export default function FreelancerPage() {
       {/* ========================================= */}
 
       <section className="mt-5 sm:mt-6">
-
         <div
           className="
             grid
@@ -88,12 +148,16 @@ export default function FreelancerPage() {
           "
         >
 
+          {/* AVAILABLE JOBS */}
+
           <StatsCard
             title="Available Jobs"
-            value="0"
+            value={String(availableJobs)}
             subtitle="Open for applications"
             icon={Briefcase}
           />
+
+          {/* APPLICATIONS */}
 
           <StatsCard
             title="Applications"
@@ -102,12 +166,16 @@ export default function FreelancerPage() {
             icon={FileText}
           />
 
+          {/* ONGOING */}
+
           <StatsCard
             title="Ongoing"
             value="0"
             subtitle="Current Projects"
             icon={Clock}
           />
+
+          {/* COMPLETED */}
 
           <StatsCard
             title="Completed"
@@ -117,7 +185,6 @@ export default function FreelancerPage() {
           />
 
         </div>
-
       </section>
 
       {/* ========================================= */}
@@ -125,7 +192,6 @@ export default function FreelancerPage() {
       {/* ========================================= */}
 
       <section className="mt-5 sm:mt-6">
-
         <div
           className="
             grid
@@ -141,9 +207,7 @@ export default function FreelancerPage() {
           {/* ================================= */}
 
           <div className="min-w-0 lg:col-span-2">
-
             <RecentActivity />
-
           </div>
 
           {/* ================================= */}
@@ -151,17 +215,14 @@ export default function FreelancerPage() {
           {/* ================================= */}
 
           <div className="min-w-0">
-
             <ProfileCard
               fullname={user.fullname}
               email={user.email}
               role={user.role}
             />
-
           </div>
 
         </div>
-
       </section>
 
     </DashboardLayout>

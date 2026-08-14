@@ -431,10 +431,43 @@ const deleteProject = async (req, res) => {
   }
 };
 
+// ============================================
+// GET ALL AVAILABLE PROJECTS
+// ============================================
+
+const getAllProjects = async (req, res) => {
+  try {
+    const result = await pool.query(
+      `
+      SELECT
+        p.*,
+        cp.user_id AS client_user_id
+      FROM projects p
+      JOIN client_profiles cp
+        ON p.client_id = cp.id
+      ORDER BY p.id DESC
+      `
+    );
+
+    return res.status(200).json({
+      success: true,
+      projects: result.rows,
+    });
+  } catch (error) {
+    console.error("GET ALL PROJECTS ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server Error",
+      error: error.message,
+    });
+  }
+};
 
 module.exports = {
   createProject,
   getClientProjects,
+  getAllProjects,
   getProjectById,
   updateProject,
   deleteProject,
