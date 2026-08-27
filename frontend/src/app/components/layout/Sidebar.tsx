@@ -51,6 +51,10 @@ export default function Sidebar({ role }: SidebarProps) {
     }
   }
 
+  // =========================================
+  // ADMIN MENU
+  // =========================================
+
   const adminMenu = [
     {
       title: "Dashboard",
@@ -74,6 +78,10 @@ export default function Sidebar({ role }: SidebarProps) {
     },
   ];
 
+  // =========================================
+  // FREELANCER MENU
+  // =========================================
+
   const freelancerMenu = [
     {
       title: "Dashboard",
@@ -88,15 +96,23 @@ export default function Sidebar({ role }: SidebarProps) {
     {
       title: "Browse Projects",
       icon: Briefcase,
-      
-  href: "/freelancer/browse-projects",
+      href: "/freelancer/browse-projects",
     },
     {
       title: "My Applications",
       icon: FolderOpen,
       href: "#",
     },
+    {
+      title: "My Portfolio",
+      icon: Briefcase,
+      href: "/freelancer/portfolio",
+    },
   ];
+
+  // =========================================
+  // CLIENT MENU
+  // =========================================
 
   const clientMenu = [
     {
@@ -109,17 +125,21 @@ export default function Sidebar({ role }: SidebarProps) {
       icon: User,
       href: "/profile",
     },
-   {
-  title: "My Projects",
-  icon: FolderOpen,
-  href: "/client/projects",
-},
     {
-  title: "Post Project",
-  icon: PlusCircle,
-  href: "/client/create-project",
-},
+      title: "My Projects",
+      icon: FolderOpen,
+      href: "/client/projects",
+    },
+    {
+      title: "Post Project",
+      icon: PlusCircle,
+      href: "/client/create-project",
+    },
   ];
+
+  // =========================================
+  // SELECT MENU BASED ON ROLE
+  // =========================================
 
   const menu =
     role === "admin"
@@ -128,10 +148,20 @@ export default function Sidebar({ role }: SidebarProps) {
       ? freelancerMenu
       : clientMenu;
 
+  // =========================================
+  // LOGOUT
+  // =========================================
+
   const handleLogout = () => {
     localStorage.removeItem("user");
+    localStorage.removeItem("token");
+
     router.push("/login");
   };
+
+  // =========================================
+  // MOBILE NAVIGATION
+  // =========================================
 
   const handleNavigation = () => {
     setMobileOpen(false);
@@ -220,9 +250,7 @@ export default function Sidebar({ role }: SidebarProps) {
         {/* ========================================= */}
 
         <div className="border-b border-gray-200 px-6 py-6 sm:px-7 sm:py-8">
-
           <div className="flex items-start justify-between">
-
             <div>
               <h1 className="text-2xl font-bold text-emerald-600 sm:text-3xl">
                 FreelanceShield
@@ -251,9 +279,7 @@ export default function Sidebar({ role }: SidebarProps) {
             >
               <X size={22} />
             </button>
-
           </div>
-
         </div>
 
         {/* ========================================= */}
@@ -261,13 +287,11 @@ export default function Sidebar({ role }: SidebarProps) {
         {/* ========================================= */}
 
         <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-5 sm:py-7">
-
           <p className="mb-4 px-1 text-xs font-bold uppercase tracking-widest text-gray-400">
             MAIN MENU
           </p>
 
           <div className="space-y-2">
-
             {menu.map((item) => {
               const Icon = item.icon;
 
@@ -332,9 +356,7 @@ export default function Sidebar({ role }: SidebarProps) {
 
               <span>Logout</span>
             </button>
-
           </div>
-
         </div>
 
         {/* ========================================= */}
@@ -342,28 +364,27 @@ export default function Sidebar({ role }: SidebarProps) {
         {/* ========================================= */}
 
         <div className="border-t border-gray-200 p-4">
-
           <div className="flex items-center gap-3 rounded-xl bg-gray-50 p-3">
-
-            <div className="
-              flex
-              h-10
-              w-10
-              shrink-0
-              items-center
-              justify-center
-              rounded-full
-              bg-emerald-100
-              font-semibold
-              text-emerald-600
-            ">
+            <div
+              className="
+                flex
+                h-10
+                w-10
+                shrink-0
+                items-center
+                justify-center
+                rounded-full
+                bg-emerald-100
+                font-semibold
+                text-emerald-600
+              "
+            >
               {user.fullname
                 ? user.fullname.charAt(0).toUpperCase()
                 : "G"}
             </div>
 
             <div className="min-w-0">
-
               <p className="truncate text-sm font-semibold text-gray-800">
                 {user.fullname}
               </p>
@@ -371,13 +392,9 @@ export default function Sidebar({ role }: SidebarProps) {
               <p className="truncate text-xs capitalize text-gray-500">
                 {role}
               </p>
-
             </div>
-
           </div>
-
         </div>
-
       </aside>
     </>
   );

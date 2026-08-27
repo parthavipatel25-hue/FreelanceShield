@@ -10,13 +10,9 @@ const profileRoutes = require("./routes/profileRoutes");
 const freelancerProfileRoutes = require("./routes/freelancerProfileRoutes");
 const clientProfileRoutes = require("./routes/clientProfileRoutes");
 const projectRoutes = require("./routes/projectRoutes");
-
+const portfolioRoutes = require("./routes/portfolioRoutes");
 
 const app = express();
-
-// ==================================================
-// MIDDLEWARE
-// ==================================================
 
 app.use(
   cors({
@@ -28,74 +24,28 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ==================================================
-// STATIC UPLOADS
-// ==================================================
-
+// Uploads
 const uploadsPath = path.join(__dirname, "uploads");
 
-console.log("=================================");
 console.log("SERVER DIRECTORY:", __dirname);
 console.log("UPLOADS DIRECTORY:", uploadsPath);
-console.log("=================================");
 
 app.use("/uploads", express.static(uploadsPath));
 
-// ==================================================
-// API ROUTES
-// ==================================================
-
+// Routes
 app.use("/api/auth", authRoutes);
-
 app.use("/api/profile", profileRoutes);
+app.use("/api/freelancer-profile", freelancerProfileRoutes);
+app.use("/api/client-profile", clientProfileRoutes);
+app.use("/api/projects", projectRoutes);
+app.use("/api/portfolio", portfolioRoutes);
 
-app.use(
-  "/api/freelancer-profile",
-  freelancerProfileRoutes
-);
-
-app.use(
-  "/api/client-profile",
-  clientProfileRoutes
-);
-
-app.use(
-  "/api/projects",
-  projectRoutes
-);
-
-// ==================================================
-// TEST ROUTE
-// ==================================================
-
+// Test
 app.get("/", (req, res) => {
-  res.status(200).send(
-    "🚀 FreelanceShield Backend is Running..."
-  );
+  res.status(200).send("🚀 FreelanceShield Backend is Running...");
 });
 
-// ==================================================
-// UPLOAD TEST ROUTE
-// ==================================================
-
-app.get("/uploads", (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: "Uploads directory is available.",
-    profileUrl: `http://localhost:${
-      process.env.PORT || 5000
-    }/uploads/profile`,
-
-    resumesUrl: `http://localhost:${
-      process.env.PORT || 5000
-    }/uploads/resumes`,
-  });
-});
-
-// ==================================================
-// 404 HANDLER
-// ==================================================
-
+// 404
 app.use((req, res) => {
   res.status(404).json({
     success: false,
@@ -103,48 +53,22 @@ app.use((req, res) => {
   });
 });
 
-// ==================================================
-// GLOBAL ERROR HANDLER
-// ==================================================
-
+// Error
 app.use((err, req, res, next) => {
   console.error("SERVER ERROR:", err);
 
   res.status(500).json({
     success: false,
-    message:
-      err.message || "Internal Server Error",
+    message: err.message || "Internal Server Error",
   });
 });
-
-// ==================================================
-// SERVER
-// ==================================================
 
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
-  console.log("");
   console.log("==========================================");
   console.log("🚀 FreelanceShield Backend Started");
+  console.log(`🚀 Server: http://localhost:${PORT}`);
+  console.log(`📁 Uploads: http://localhost:${PORT}/uploads`);
   console.log("==========================================");
-
-  console.log(
-    `🚀 Server: http://localhost:${PORT}`
-  );
-
-  console.log(
-    `📁 Uploads: http://localhost:${PORT}/uploads`
-  );
-
-  console.log(
-    `🖼️ Profile: http://localhost:${PORT}/uploads/profile`
-  );
-
-  console.log(
-    `📄 Resumes: http://localhost:${PORT}/uploads/resumes`
-  );
-
-  console.log("==========================================");
-  console.log("");
 });

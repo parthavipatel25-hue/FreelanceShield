@@ -1,24 +1,26 @@
 const pool = require("../config/db");
 const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 
 // ================= REGISTER =================
 const register = async (req, res) => {
   try {
     const { fullname, email, password, role } = req.body;
-    // Prevent admin registration
-if (role === "admin") {
-  return res.status(403).json({
-    success: false,
-    message: "Admin registration is not allowed.",
-  });
-}
 
-if (email === "support@freelanceshield.com") {
-  return res.status(403).json({
-    success: false,
-    message: "This email is reserved.",
-  });
-}
+    // Prevent admin registration
+    if (role === "admin") {
+      return res.status(403).json({
+        success: false,
+        message: "Admin registration is not allowed.",
+      });
+    }
+
+    if (email === "support@freelanceshield.com") {
+      return res.status(403).json({
+        success: false,
+        message: "This email is reserved.",
+      });
+    }
 
     // Check if email already exists
     const existingUser = await pool.query(
@@ -60,6 +62,7 @@ if (email === "support@freelanceshield.com") {
   }
 };
 
+
 // ================= LOGIN =================
 const login = async (req, res) => {
   try {
@@ -82,23 +85,48 @@ const login = async (req, res) => {
 
     // Get user details
     const user = result.rows[0];
-    // Compare entered password with hashed password
-const isMatch = await bcrypt.compare(password, user.password);
 
-if (!isMatch) {
-  return res.status(401).json({
-    success: false,
-    message: "Invalid Password",
-  });
-}
+    // Compare entered password with hashed password
+    const isMatch = await bcrypt.compare(
+      password,
+      user.password
+    );
+
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid Password",
+      });
+    }
 
     console.log("User Found:");
     console.log(user);
 
+    // ================= CREATE JWT TOKEN =================
+
+    const token = jwt.sign(
+      {
+        id: user.id,
+        role: user.role,
+      },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "1d",
+      }
+    );
+
+    // ================= LOGIN RESPONSE =================
+
     res.status(200).json({
       success: true,
-      message: "User Found!",
-      user,
+      message: "Login Successful!",
+      token,
+      user: {
+        id: user.id,
+        fullname: user.fullname,
+        email: user.email,
+        role: user.role,
+      },
     });
 
   } catch (error) {
@@ -110,6 +138,7 @@ if (!isMatch) {
     });
   }
 };
+
 
 module.exports = {
   register,
