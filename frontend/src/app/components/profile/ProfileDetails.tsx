@@ -9,8 +9,6 @@ import {
   MapPin,
   Code2,
   FileText,
-  Linkedin,
-  Github,
   ExternalLink,
   Building2,
 } from "lucide-react";
@@ -354,10 +352,9 @@ export default function ProfileDetails({
                   className="flex items-center justify-between rounded-xl border border-gray-200 bg-white p-4 transition hover:border-emerald-200 hover:bg-emerald-50/30"
                 >
                   <div className="flex items-center gap-3">
-                    <Linkedin
-                      size={20}
-                      className="text-emerald-600"
-                    />
+                    <span className="text-sm font-bold text-gray-800">
+  GH
+</span>
 
                     <span className="text-sm font-semibold text-gray-800">
                       LinkedIn
@@ -381,10 +378,9 @@ export default function ProfileDetails({
                   className="flex items-center justify-between rounded-xl border border-gray-200 bg-white p-4 transition hover:border-emerald-200 hover:bg-emerald-50/30"
                 >
                   <div className="flex items-center gap-3">
-                    <Github
-                      size={20}
-                      className="text-emerald-600"
-                    />
+                   <span className="text-sm font-bold text-gray-800">
+  GH
+</span>
 
                     <span className="text-sm font-semibold text-gray-800">
                       GitHub

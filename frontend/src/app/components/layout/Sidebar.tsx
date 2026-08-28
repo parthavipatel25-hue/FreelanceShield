@@ -101,7 +101,7 @@ export default function Sidebar({ role }: SidebarProps) {
     {
       title: "My Applications",
       icon: FolderOpen,
-      href: "#",
+      href:  "/freelancer/applications",
     },
     {
       title: "My Portfolio",
@@ -129,6 +129,11 @@ export default function Sidebar({ role }: SidebarProps) {
       title: "My Projects",
       icon: FolderOpen,
       href: "/client/projects",
+    },
+    {
+      title: "Proposals",
+      icon: FileText,
+      href: "/client/proposals",
     },
     {
       title: "Post Project",
@@ -295,7 +300,11 @@ export default function Sidebar({ role }: SidebarProps) {
             {menu.map((item) => {
               const Icon = item.icon;
 
-              const active = pathname === item.href;
+              const active =
+                pathname === item.href ||
+                (item.href !== "#" &&
+                  item.href !== "/client" &&
+                  pathname.startsWith(`${item.href}/`));
 
               return (
                 <Link

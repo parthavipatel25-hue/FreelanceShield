@@ -23,11 +23,25 @@ interface User {
   role: "admin" | "freelancer" | "client";
 }
 
+interface Project {
+  id: number;
+  title: string;
+}
+
+interface Proposal {
+  id: number;
+  project_id: number;
+  freelancer_id: number;
+  status: string;
+}
+
 export default function ClientPage() {
   const router = useRouter();
 
   const [user, setUser] = useState<User | null>(null);
+
   const [projectCount, setProjectCount] = useState(0);
+  const [proposalCount, setProposalCount] = useState(0);
 
   useEffect(() => {
     const loadClientData = async () => {
@@ -39,7 +53,7 @@ export default function ClientPage() {
       }
 
       try {
-        const loggedInUser = JSON.parse(storedUser);
+        const loggedInUser: User = JSON.parse(storedUser);
 
         if (loggedInUser.role !== "client") {
           router.push("/login");
@@ -52,17 +66,67 @@ export default function ClientPage() {
         // GET CLIENT PROJECTS
         // ============================================
 
-        const response = await fetch(
+        const projectsResponse = await fetch(
           `http://localhost:5000/api/projects/client/${loggedInUser.id}`
         );
 
-        const data = await response.json();
+        const projectsData = await projectsResponse.json();
 
-        if (data.success) {
-          setProjectCount(data.projects.length);
+        if (!projectsResponse.ok || !projectsData.success) {
+          throw new Error(
+            projectsData.message || "Failed to load client projects."
+          );
         }
+
+        const clientProjects: Project[] =
+          projectsData.projects || [];
+
+        setProjectCount(clientProjects.length);
+
+        // ============================================
+        // GET PROPOSALS FOR CLIENT PROJECTS
+        // ============================================
+
+        if (clientProjects.length === 0) {
+          setProposalCount(0);
+          return;
+        }
+
+        const proposalResponses = await Promise.all(
+          clientProjects.map(async (project) => {
+            try {
+              const response = await fetch(
+                `http://localhost:5000/api/proposals/project/${project.id}`
+              );
+
+              const data = await response.json();
+
+              if (!response.ok || !data.success) {
+                return [];
+              }
+
+              return data.proposals || [];
+            } catch (error) {
+              console.error(
+                `Failed to load proposals for project ${project.id}:`,
+                error
+              );
+
+              return [];
+            }
+          })
+        );
+
+        const allProposals: Proposal[] =
+          proposalResponses.flat();
+
+        setProposalCount(allProposals.length);
+
       } catch (error) {
-        console.error("Invalid user data or project request:", error);
+        console.error(
+          "CLIENT DASHBOARD ERROR:",
+          error
+        );
 
         localStorage.removeItem("user");
         router.push("/login");
@@ -71,6 +135,10 @@ export default function ClientPage() {
 
     loadClientData();
   }, [router]);
+
+  // ============================================
+  // LOADING
+  // ============================================
 
   if (!user) {
     return null;
@@ -108,12 +176,16 @@ export default function ClientPage() {
           "
         >
 
+          {/* PROJECTS POSTED */}
+
           <StatsCard
             title="Projects Posted"
             value={projectCount.toString()}
             subtitle="Total projects created"
             icon={BriefcaseBusiness}
           />
+
+          {/* ACTIVE PROJECTS */}
 
           <StatsCard
             title="Active Projects"
@@ -122,12 +194,16 @@ export default function ClientPage() {
             icon={Clock}
           />
 
+          {/* PROPOSALS RECEIVED */}
+
           <StatsCard
             title="Proposals Received"
-            value="0"
+            value={proposalCount.toString()}
             subtitle="Freelancer applications"
             icon={FileText}
           />
+
+          {/* HIRED FREELANCERS */}
 
           <StatsCard
             title="Hired Freelancers"

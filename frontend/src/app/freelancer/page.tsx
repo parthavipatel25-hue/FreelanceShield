@@ -16,11 +16,20 @@ import {
   FileText,
 } from "lucide-react";
 
+// ==================================================
+// USER
+// ==================================================
+
 interface User {
+  id: number;
   fullname: string;
   email: string;
   role: "admin" | "freelancer" | "client";
 }
+
+// ==================================================
+// PROJECT
+// ==================================================
 
 interface Project {
   id: number;
@@ -28,18 +37,52 @@ interface Project {
   status?: string;
 }
 
+// ==================================================
+// PROPOSAL
+// ==================================================
+
+interface Proposal {
+  id: number;
+  project_id: number;
+  freelancer_id: number;
+  cover_letter: string;
+  proposed_budget: string | number;
+  delivery_time: number;
+  status: "pending" | "accepted" | "rejected";
+  project_title?: string;
+  project_category?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// ==================================================
+// FREELANCER DASHBOARD
+// ==================================================
+
 export default function FreelancerPage() {
   const router = useRouter();
 
   const [user, setUser] = useState<User | null>(null);
-  const [availableJobs, setAvailableJobs] = useState(0);
 
-  // ============================================
+  const [availableJobs, setAvailableJobs] =
+    useState(0);
+
+  const [applicationCount, setApplicationCount] =
+    useState(0);
+
+  const [ongoingCount, setOngoingCount] =
+    useState(0);
+
+  const [completedCount, setCompletedCount] =
+    useState(0);
+
+  // ==================================================
   // GET LOGGED-IN USER
-  // ============================================
+  // ==================================================
 
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
+    const storedUser =
+      localStorage.getItem("user");
 
     if (!storedUser) {
       router.push("/login");
@@ -47,25 +90,34 @@ export default function FreelancerPage() {
     }
 
     try {
-      const loggedInUser = JSON.parse(storedUser);
+      const loggedInUser: User =
+        JSON.parse(storedUser);
 
-      if (loggedInUser.role !== "freelancer") {
+      if (
+        !loggedInUser ||
+        loggedInUser.role !== "freelancer"
+      ) {
         router.push("/login");
         return;
       }
 
       setUser(loggedInUser);
     } catch (error) {
-      console.error("Invalid user data:", error);
+      console.error(
+        "INVALID USER DATA:",
+        error
+      );
 
       localStorage.removeItem("user");
+      localStorage.removeItem("token");
+
       router.push("/login");
     }
   }, [router]);
 
-  // ============================================
+  // ==================================================
   // GET AVAILABLE PROJECT COUNT
-  // ============================================
+  // ==================================================
 
   useEffect(() => {
     const fetchAvailableJobs = async () => {
@@ -74,24 +126,34 @@ export default function FreelancerPage() {
           "http://localhost:5000/api/projects"
         );
 
-        const data = await response.json();
+        const data =
+          await response.json();
 
-        if (!response.ok || !data.success) {
+        if (
+          !response.ok ||
+          !data.success
+        ) {
           throw new Error(
-            data.message || "Failed to load available projects."
+            data.message ||
+              "Failed to load available projects."
           );
         }
 
-        const projects: Project[] = data.projects || [];
+        const projects: Project[] =
+          data.projects || [];
 
-        // Count only open projects
-        const openProjects = projects.filter(
-          (project) =>
-            !project.status ||
-            project.status.toLowerCase() === "open"
+        // Only projects that are open
+        const openProjects =
+          projects.filter(
+            (project) =>
+              !project.status ||
+              project.status.toLowerCase() ===
+                "open"
+          );
+
+        setAvailableJobs(
+          openProjects.length
         );
-
-        setAvailableJobs(openProjects.length);
       } catch (error) {
         console.error(
           "FETCH AVAILABLE PROJECTS ERROR:",
@@ -105,17 +167,159 @@ export default function FreelancerPage() {
     fetchAvailableJobs();
   }, []);
 
-  // ============================================
+  // ==================================================
+  // GET FREELANCER APPLICATIONS
+  // ==================================================
+
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchApplicationStats =
+      async () => {
+        try {
+          const response = await fetch(
+            `http://localhost:5000/api/proposals/freelancer/${user.id}`
+          );
+
+          const data =
+            await response.json();
+
+          if (
+            !response.ok ||
+            !data.success
+          ) {
+            throw new Error(
+              data.message ||
+                "Failed to load applications."
+            );
+          }
+
+          const proposals: Proposal[] =
+            data.proposals || [];
+
+          // ========================================
+          // APPLICATIONS
+          // ========================================
+
+          setApplicationCount(
+            proposals.length
+          );
+
+          // ========================================
+          // GET PROJECT STATUS FOR ACCEPTED
+          // ========================================
+
+          const acceptedProposals =
+            proposals.filter(
+              (proposal) =>
+                proposal.status ===
+                "accepted"
+            );
+
+          if (
+            acceptedProposals.length ===
+            0
+          ) {
+            setOngoingCount(0);
+            setCompletedCount(0);
+            return;
+          }
+
+          const projectResponses =
+            await Promise.all(
+              acceptedProposals.map(
+                async (proposal) => {
+                  try {
+                    const projectResponse =
+                      await fetch(
+                        `http://localhost:5000/api/projects/${proposal.project_id}`
+                      );
+
+                    const projectData =
+                      await projectResponse.json();
+
+                    if (
+                      projectResponse.ok &&
+                      projectData.success
+                    ) {
+                      return projectData.project;
+                    }
+
+                    return null;
+                  } catch (projectError) {
+                    console.error(
+                      `FAILED TO LOAD PROJECT ${proposal.project_id}:`,
+                      projectError
+                    );
+
+                    return null;
+                  }
+                }
+              )
+            );
+
+          // ========================================
+          // COUNT ONGOING + COMPLETED
+          // ========================================
+
+          let ongoing = 0;
+          let completed = 0;
+
+          projectResponses.forEach(
+            (project) => {
+              if (!project) {
+                return;
+              }
+
+              const status =
+                String(
+                  project.status || ""
+                ).toLowerCase();
+
+              if (
+                status === "in_progress" ||
+                status === "in progress"
+              ) {
+                ongoing++;
+              }
+
+              if (
+                status === "completed" ||
+                status === "complete"
+              ) {
+                completed++;
+              }
+            }
+          );
+
+          setOngoingCount(ongoing);
+          setCompletedCount(completed);
+        } catch (error) {
+          console.error(
+            "FETCH APPLICATION STATS ERROR:",
+            error
+          );
+
+          setApplicationCount(0);
+          setOngoingCount(0);
+          setCompletedCount(0);
+        }
+      };
+
+    fetchApplicationStats();
+  }, [user]);
+
+  // ==================================================
   // LOADING
-  // ============================================
+  // ==================================================
 
   if (!user) {
     return null;
   }
 
-  // ============================================
+  // ==================================================
   // DASHBOARD
-  // ============================================
+  // ==================================================
 
   return (
     <DashboardLayout role="freelancer">
@@ -136,6 +340,7 @@ export default function FreelancerPage() {
       {/* ========================================= */}
 
       <section className="mt-5 sm:mt-6">
+
         <div
           className="
             grid
@@ -152,7 +357,9 @@ export default function FreelancerPage() {
 
           <StatsCard
             title="Available Jobs"
-            value={String(availableJobs)}
+            value={String(
+              availableJobs
+            )}
             subtitle="Open for applications"
             icon={Briefcase}
           />
@@ -161,7 +368,9 @@ export default function FreelancerPage() {
 
           <StatsCard
             title="Applications"
-            value="0"
+            value={String(
+              applicationCount
+            )}
             subtitle="Submitted"
             icon={FileText}
           />
@@ -170,7 +379,9 @@ export default function FreelancerPage() {
 
           <StatsCard
             title="Ongoing"
-            value="0"
+            value={String(
+              ongoingCount
+            )}
             subtitle="Current Projects"
             icon={Clock}
           />
@@ -179,7 +390,9 @@ export default function FreelancerPage() {
 
           <StatsCard
             title="Completed"
-            value="0"
+            value={String(
+              completedCount
+            )}
             subtitle="Successfully Delivered"
             icon={CheckCircle}
           />
@@ -192,6 +405,7 @@ export default function FreelancerPage() {
       {/* ========================================= */}
 
       <section className="mt-5 sm:mt-6">
+
         <div
           className="
             grid
@@ -207,7 +421,9 @@ export default function FreelancerPage() {
           {/* ================================= */}
 
           <div className="min-w-0 lg:col-span-2">
+
             <RecentActivity />
+
           </div>
 
           {/* ================================= */}
@@ -215,14 +431,17 @@ export default function FreelancerPage() {
           {/* ================================= */}
 
           <div className="min-w-0">
+
             <ProfileCard
               fullname={user.fullname}
               email={user.email}
               role={user.role}
             />
+
           </div>
 
         </div>
+
       </section>
 
     </DashboardLayout>

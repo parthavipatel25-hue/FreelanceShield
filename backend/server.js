@@ -10,6 +10,7 @@ const profileRoutes = require("./routes/profileRoutes");
 const freelancerProfileRoutes = require("./routes/freelancerProfileRoutes");
 const clientProfileRoutes = require("./routes/clientProfileRoutes");
 const projectRoutes = require("./routes/projectRoutes");
+const proposalRoutes = require("./routes/proposalRoutes");
 const portfolioRoutes = require("./routes/portfolioRoutes");
 
 const app = express();
@@ -38,6 +39,7 @@ app.use("/api/profile", profileRoutes);
 app.use("/api/freelancer-profile", freelancerProfileRoutes);
 app.use("/api/client-profile", clientProfileRoutes);
 app.use("/api/projects", projectRoutes);
+app.use("/api/proposals", proposalRoutes);
 app.use("/api/portfolio", portfolioRoutes);
 
 // Test

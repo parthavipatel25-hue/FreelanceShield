@@ -1245,9 +1245,7 @@ const skills = parseList(profile?.skills);
 
           </div>
 
-          <ChangePasswordForm
-            userId={user.id}
-          />
+          <ChangePasswordForm/>
 
         </section>
 
