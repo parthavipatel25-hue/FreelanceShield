@@ -1,4 +1,5 @@
 const express = require("express");
+
 const router = express.Router();
 
 const {
@@ -8,6 +9,8 @@ const {
   getProjectById,
   updateProject,
   deleteProject,
+  updateProjectProgress,
+  completeProject,
 } = require("../controllers/projectController");
 
 // ============================================
@@ -28,6 +31,20 @@ router.get("/", getAllProjects);
 // ============================================
 
 router.get("/client/:user_id", getClientProjects);
+
+// ============================================
+// UPDATE PROJECT PROGRESS
+// Freelancer updates project progress
+// ============================================
+
+router.put("/:id/progress", updateProjectProgress);
+
+// ============================================
+// COMPLETE PROJECT
+// Freelancer marks project as completed
+// ============================================
+
+router.put("/:id/complete", completeProject);
 
 // ============================================
 // GET SINGLE PROJECT

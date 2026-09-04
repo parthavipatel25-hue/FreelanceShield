@@ -62,7 +62,8 @@ const createProject = async (req, res) => {
     if (clientResult.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        message: "Client profile not found. Please create your profile first.",
+        message:
+          "Client profile not found. Please create your profile first.",
       });
     }
 
@@ -148,10 +149,6 @@ const createProject = async (req, res) => {
 };
 
 // ============================================
-// EXPORT
-// ============================================
-
-// ============================================
 // GET CLIENT PROJECTS
 // ============================================
 
@@ -210,7 +207,6 @@ const getClientProjects = async (req, res) => {
       success: true,
       projects: result.rows,
     });
-
   } catch (error) {
     console.error("GET CLIENT PROJECTS ERROR:", error);
 
@@ -229,6 +225,10 @@ const getClientProjects = async (req, res) => {
 const getProjectById = async (req, res) => {
   try {
     const { id } = req.params;
+
+    // ============================================
+    // GET PROJECT
+    // ============================================
 
     const result = await pool.query(
       `
@@ -377,6 +377,344 @@ const updateProject = async (req, res) => {
 };
 
 // ============================================
+// UPDATE PROJECT PROGRESS
+// Week 8 - Project Tracking
+// ============================================
+
+const updateProjectProgress = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { progress, freelancer_id } = req.body;
+
+    // ============================================
+    // REQUIRED FIELDS
+    // ============================================
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "Project ID is required.",
+      });
+    }
+
+    if (progress === undefined || progress === null) {
+      return res.status(400).json({
+        success: false,
+        message: "Progress is required.",
+      });
+    }
+
+    if (!freelancer_id) {
+      return res.status(400).json({
+        success: false,
+        message: "Freelancer ID is required.",
+      });
+    }
+
+    // ============================================
+    // VALIDATE PROGRESS
+    // ============================================
+
+    const progressValue = Number(progress);
+
+    if (
+      !Number.isInteger(progressValue) ||
+      progressValue < 0 ||
+      progressValue > 100
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Progress must be an integer between 0 and 100.",
+      });
+    }
+
+    // ============================================
+    // GET PROJECT
+    // ============================================
+
+    const projectResult = await pool.query(
+      `
+      SELECT
+        id,
+        client_id,
+        freelancer_id,
+        title,
+        status,
+        progress,
+        deadline
+      FROM projects
+      WHERE id = $1
+      `,
+      [id]
+    );
+
+    if (projectResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Project not found.",
+      });
+    }
+
+    const project = projectResult.rows[0];
+
+    // ============================================
+    // CHECK ASSIGNED FREELANCER
+    // ============================================
+
+    if (!project.freelancer_id) {
+      return res.status(400).json({
+        success: false,
+        message: "No freelancer has been assigned to this project.",
+      });
+    }
+
+    // ============================================
+    // CHECK FREELANCER AUTHORIZATION
+    // ============================================
+
+    if (Number(project.freelancer_id) !== Number(freelancer_id)) {
+      return res.status(403).json({
+        success: false,
+        message:
+          "You are not authorized to update this project's progress.",
+      });
+    }
+
+    // ============================================
+    // CHECK PROJECT STATUS
+    // ============================================
+
+    if (
+      !project.status ||
+      project.status.toLowerCase() !== "in_progress"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Progress can only be updated for projects that are in progress.",
+      });
+    }
+
+    // ============================================
+    // UPDATE PROJECT PROGRESS
+    // ============================================
+
+    const updatedProject = await pool.query(
+      `
+      UPDATE projects
+      SET
+        progress = $1,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $2
+      RETURNING *
+      `,
+      [progressValue, id]
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Project progress updated successfully.",
+      project: updatedProject.rows[0],
+    });
+  } catch (error) {
+    console.error("UPDATE PROJECT PROGRESS ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server Error",
+      error: error.message,
+    });
+  }
+};
+
+// ============================================
+// COMPLETE PROJECT
+// Week 8 - Project Completion
+// ============================================
+
+const completeProject = async (req, res) => {
+  const client = await pool.connect();
+
+  try {
+    const { id } = req.params;
+    const { freelancer_id } = req.body;
+
+    // ============================================
+    // REQUIRED FIELDS
+    // ============================================
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "Project ID is required.",
+      });
+    }
+
+    if (!freelancer_id) {
+      return res.status(400).json({
+        success: false,
+        message: "Freelancer ID is required.",
+      });
+    }
+
+    // ============================================
+    // START TRANSACTION
+    // ============================================
+
+    await client.query("BEGIN");
+
+    // ============================================
+    // GET PROJECT
+    // ============================================
+
+    const projectResult = await client.query(
+      `
+      SELECT
+        id,
+        client_id,
+        freelancer_id,
+        status,
+        progress
+      FROM projects
+      WHERE id = $1
+      FOR UPDATE
+      `,
+      [id]
+    );
+
+    if (projectResult.rows.length === 0) {
+      await client.query("ROLLBACK");
+
+      return res.status(404).json({
+        success: false,
+        message: "Project not found.",
+      });
+    }
+
+    const project = projectResult.rows[0];
+
+    // ============================================
+    // CHECK ASSIGNED FREELANCER
+    // ============================================
+
+    if (!project.freelancer_id) {
+      await client.query("ROLLBACK");
+
+      return res.status(400).json({
+        success: false,
+        message: "No freelancer has been assigned to this project.",
+      });
+    }
+
+    // ============================================
+    // CHECK FREELANCER AUTHORIZATION
+    // ============================================
+
+    if (Number(project.freelancer_id) !== Number(freelancer_id)) {
+      await client.query("ROLLBACK");
+
+      return res.status(403).json({
+        success: false,
+        message:
+          "You are not authorized to complete this project.",
+      });
+    }
+
+    // ============================================
+    // CHECK PROJECT STATUS
+    // ============================================
+
+    if (project.status !== "in_progress") {
+      await client.query("ROLLBACK");
+
+      return res.status(400).json({
+        success: false,
+        message:
+          "Only projects currently in progress can be completed.",
+      });
+    }
+
+    // ============================================
+    // CHECK PROJECT PROGRESS
+    // ============================================
+
+    if (Number(project.progress) < 100) {
+      await client.query("ROLLBACK");
+
+      return res.status(400).json({
+        success: false,
+        message:
+          "Project progress must reach 100% before completing the project.",
+      });
+    }
+
+    // ============================================
+    // UPDATE PROJECT
+    // ============================================
+
+    const updatedProject = await client.query(
+      `
+      UPDATE projects
+      SET
+        status = 'completed',
+        progress = 100,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+      RETURNING *
+      `,
+      [id]
+    );
+
+    // ============================================
+    // COMPLETE RELATED CONTRACT
+    // ============================================
+
+    const updatedContract = await client.query(
+      `
+      UPDATE contracts
+      SET
+        status = 'completed',
+        updated_at = CURRENT_TIMESTAMP
+      WHERE project_id = $1
+        AND status = 'active'
+      RETURNING *
+      `,
+      [id]
+    );
+
+    // ============================================
+    // COMMIT TRANSACTION
+    // ============================================
+
+    await client.query("COMMIT");
+
+    return res.status(200).json({
+      success: true,
+      message:
+        "Project completed and related contract updated successfully.",
+      project: updatedProject.rows[0],
+      contract: updatedContract.rows[0] || null,
+    });
+  } catch (error) {
+    try {
+      await client.query("ROLLBACK");
+    } catch (rollbackError) {
+      console.error("ROLLBACK ERROR:", rollbackError);
+    }
+
+    console.error("COMPLETE PROJECT ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server Error",
+      error: error.message,
+    });
+  } finally {
+    client.release();
+  }
+};
+
+// ============================================
 // DELETE PROJECT
 // ============================================
 
@@ -464,6 +802,10 @@ const getAllProjects = async (req, res) => {
   }
 };
 
+// ============================================
+// EXPORT
+// ============================================
+
 module.exports = {
   createProject,
   getClientProjects,
@@ -471,4 +813,8 @@ module.exports = {
   getProjectById,
   updateProject,
   deleteProject,
+
+  // Week 8 - Project Tracking
+  updateProjectProgress,
+  completeProject,
 };

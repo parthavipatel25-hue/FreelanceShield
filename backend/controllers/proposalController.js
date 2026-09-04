@@ -149,6 +149,7 @@ const createProposal = async (req, res) => {
       message: "Proposal submitted successfully.",
       proposal: result.rows[0],
     });
+
   } catch (error) {
     console.error("CREATE PROPOSAL ERROR:", error);
 
@@ -194,6 +195,7 @@ const getFreelancerProposals = async (req, res) => {
       success: true,
       proposals: result.rows,
     });
+
   } catch (error) {
     console.error("GET FREELANCER PROPOSALS ERROR:", error);
 
@@ -239,6 +241,7 @@ const getProjectProposals = async (req, res) => {
       success: true,
       proposals: result.rows,
     });
+
   } catch (error) {
     console.error("GET PROJECT PROPOSALS ERROR:", error);
 
@@ -263,7 +266,7 @@ const acceptProposal = async (req, res) => {
     await client.query("BEGIN");
 
     // ============================================
-    // GET PROPOSAL
+    // GET PROPOSAL + PROJECT DETAILS
     // ============================================
 
     const proposalResult = await client.query(
@@ -272,13 +275,17 @@ const acceptProposal = async (req, res) => {
         p.id,
         p.project_id,
         p.freelancer_id,
+        p.proposed_budget,
+        p.delivery_time,
         p.status,
         pr.client_id,
-        pr.status AS project_status
+        pr.status AS project_status,
+        pr.deadline
       FROM proposals p
       JOIN projects pr
         ON p.project_id = pr.id
       WHERE p.id = $1
+      FOR UPDATE
       `,
       [id]
     );
@@ -311,7 +318,10 @@ const acceptProposal = async (req, res) => {
     // CHECK PROJECT STATUS
     // ============================================
 
-    if (proposal.project_status !== "open") {
+    if (
+      !proposal.project_status ||
+      proposal.project_status.toLowerCase() !== "open"
+    ) {
       await client.query("ROLLBACK");
 
       return res.status(400).json({
@@ -346,6 +356,7 @@ const acceptProposal = async (req, res) => {
       SET
         freelancer_id = $1,
         status = 'in_progress',
+        progress = 0,
         updated_at = CURRENT_TIMESTAMP
       WHERE id = $2
       RETURNING *
@@ -353,6 +364,44 @@ const acceptProposal = async (req, res) => {
       [
         proposal.freelancer_id,
         proposal.project_id,
+      ]
+    );
+
+    // ============================================
+    // CREATE CONTRACT
+    // ============================================
+
+    const contractResult = await client.query(
+      `
+      INSERT INTO contracts (
+        project_id,
+        proposal_id,
+        client_id,
+        freelancer_id,
+        start_date,
+        end_date,
+        amount,
+        status
+      )
+      VALUES (
+        $1,
+        $2,
+        $3,
+        $4,
+        CURRENT_DATE,
+        $5,
+        $6,
+        'active'
+      )
+      RETURNING *
+      `,
+      [
+        proposal.project_id,
+        proposal.id,
+        proposal.client_id,
+        proposal.freelancer_id,
+        proposal.deadline,
+        proposal.proposed_budget,
       ]
     );
 
@@ -372,22 +421,25 @@ const acceptProposal = async (req, res) => {
       `,
       [
         proposal.project_id,
-        id,
+        proposal.id,
       ]
     );
 
     // ============================================
-    // COMMIT TRANSACTION
+    // COMMIT
     // ============================================
 
     await client.query("COMMIT");
 
     return res.status(200).json({
       success: true,
-      message: "Proposal accepted and freelancer hired successfully.",
+      message:
+        "Proposal accepted, freelancer hired, and contract created successfully.",
       proposal: acceptedProposal.rows[0],
       project: updatedProject.rows[0],
+      contract: contractResult.rows[0],
     });
+
   } catch (error) {
     await client.query("ROLLBACK");
 
@@ -398,6 +450,7 @@ const acceptProposal = async (req, res) => {
       message: "Server Error",
       error: error.message,
     });
+
   } finally {
     client.release();
   }
@@ -415,19 +468,16 @@ const rejectProposal = async (req, res) => {
     // CHECK PROPOSAL
     // ============================================
 
-    const proposalResult = await pool.query(
+    const proposalCheck = await pool.query(
       `
-      SELECT
-        id,
-        project_id,
-        status
+      SELECT id, status
       FROM proposals
       WHERE id = $1
       `,
       [id]
     );
 
-    if (proposalResult.rows.length === 0) {
+    if (proposalCheck.rows.length === 0) {
       return res.status(404).json({
         success: false,
         message: "Proposal not found.",
@@ -438,17 +488,10 @@ const rejectProposal = async (req, res) => {
     // CHECK STATUS
     // ============================================
 
-    if (proposalResult.rows[0].status === "accepted") {
+    if (proposalCheck.rows[0].status !== "pending") {
       return res.status(400).json({
         success: false,
-        message: "An accepted proposal cannot be rejected.",
-      });
-    }
-
-    if (proposalResult.rows[0].status === "rejected") {
-      return res.status(400).json({
-        success: false,
-        message: "This proposal has already been rejected.",
+        message: `This proposal has already been ${proposalCheck.rows[0].status}.`,
       });
     }
 
@@ -473,6 +516,7 @@ const rejectProposal = async (req, res) => {
       message: "Proposal rejected successfully.",
       proposal: result.rows[0],
     });
+
   } catch (error) {
     console.error("REJECT PROPOSAL ERROR:", error);
 

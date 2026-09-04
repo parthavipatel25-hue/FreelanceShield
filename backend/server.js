@@ -12,6 +12,7 @@ const clientProfileRoutes = require("./routes/clientProfileRoutes");
 const projectRoutes = require("./routes/projectRoutes");
 const proposalRoutes = require("./routes/proposalRoutes");
 const portfolioRoutes = require("./routes/portfolioRoutes");
+const contractRoutes = require("./routes/contractRoutes");
 
 const app = express();
 
@@ -41,6 +42,7 @@ app.use("/api/client-profile", clientProfileRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/proposals", proposalRoutes);
 app.use("/api/portfolio", portfolioRoutes);
+app.use("/api/contracts", contractRoutes);
 
 // Test
 app.get("/", (req, res) => {

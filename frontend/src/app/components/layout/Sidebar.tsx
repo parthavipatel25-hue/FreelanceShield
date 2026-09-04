@@ -11,6 +11,7 @@ import {
   Briefcase,
   Users,
   FileText,
+  FileSignature,
   LogOut,
   PlusCircle,
   Menu,
@@ -101,12 +102,17 @@ export default function Sidebar({ role }: SidebarProps) {
     {
       title: "My Applications",
       icon: FolderOpen,
-      href:  "/freelancer/applications",
+      href: "/freelancer/applications",
     },
     {
       title: "My Portfolio",
       icon: Briefcase,
       href: "/freelancer/portfolio",
+    },
+    {
+      title: "My Contracts",
+      icon: FileSignature,
+      href: "/freelancer/contracts",
     },
   ];
 
@@ -135,6 +141,11 @@ export default function Sidebar({ role }: SidebarProps) {
       icon: FileText,
       href: "/client/proposals",
     },
+     {
+    title: "My Contracts",
+    icon: FileSignature,
+    href: "/client/contracts",
+  },
     {
       title: "Post Project",
       icon: PlusCircle,
@@ -174,9 +185,7 @@ export default function Sidebar({ role }: SidebarProps) {
 
   return (
     <>
-      {/* ========================================= */}
       {/* MOBILE MENU BUTTON */}
-      {/* ========================================= */}
 
       <button
         type="button"
@@ -204,9 +213,7 @@ export default function Sidebar({ role }: SidebarProps) {
         <Menu size={23} />
       </button>
 
-      {/* ========================================= */}
       {/* MOBILE OVERLAY */}
-      {/* ========================================= */}
 
       {mobileOpen && (
         <div
@@ -222,9 +229,7 @@ export default function Sidebar({ role }: SidebarProps) {
         />
       )}
 
-      {/* ========================================= */}
       {/* SIDEBAR */}
-      {/* ========================================= */}
 
       <aside
         className={`
@@ -250,9 +255,7 @@ export default function Sidebar({ role }: SidebarProps) {
           lg:z-30
         `}
       >
-        {/* ========================================= */}
         {/* LOGO */}
-        {/* ========================================= */}
 
         <div className="border-b border-gray-200 px-6 py-6 sm:px-7 sm:py-8">
           <div className="flex items-start justify-between">
@@ -287,9 +290,7 @@ export default function Sidebar({ role }: SidebarProps) {
           </div>
         </div>
 
-        {/* ========================================= */}
         {/* NAVIGATION */}
-        {/* ========================================= */}
 
         <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-5 sm:py-7">
           <p className="mb-4 px-1 text-xs font-bold uppercase tracking-widest text-gray-400">
@@ -337,9 +338,7 @@ export default function Sidebar({ role }: SidebarProps) {
               );
             })}
 
-            {/* ========================================= */}
             {/* LOGOUT */}
-            {/* ========================================= */}
 
             <button
               type="button"
@@ -368,9 +367,7 @@ export default function Sidebar({ role }: SidebarProps) {
           </div>
         </div>
 
-        {/* ========================================= */}
         {/* USER SECTION */}
-        {/* ========================================= */}
 
         <div className="border-t border-gray-200 p-4">
           <div className="flex items-center gap-3 rounded-xl bg-gray-50 p-3">
@@ -408,3 +405,4 @@ export default function Sidebar({ role }: SidebarProps) {
     </>
   );
 }
+
