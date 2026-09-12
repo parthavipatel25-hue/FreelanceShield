@@ -16,6 +16,7 @@ import {
   PlusCircle,
   Menu,
   X,
+  MessageCircle,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -114,6 +115,13 @@ export default function Sidebar({ role }: SidebarProps) {
       icon: FileSignature,
       href: "/freelancer/contracts",
     },
+
+    {
+  title: "Messages",
+  icon: MessageCircle,
+  href: "/freelancer/messages",
+},
+
   ];
 
   // =========================================
@@ -146,6 +154,13 @@ export default function Sidebar({ role }: SidebarProps) {
     icon: FileSignature,
     href: "/client/contracts",
   },
+
+  {
+  title: "Messages",
+  icon: MessageCircle,
+  href: "/client/messages",
+},
+
     {
       title: "Post Project",
       icon: PlusCircle,

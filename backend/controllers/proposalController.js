@@ -42,7 +42,7 @@ const createProposal = async (req, res) => {
 
     const freelancerResult = await pool.query(
       `
-      SELECT id, role
+      SELECT id, role, fullname
       FROM users
       WHERE id = $1
       `,
@@ -63,13 +63,20 @@ const createProposal = async (req, res) => {
       });
     }
 
+    const freelancerName =
+      freelancerResult.rows[0].fullname || "A freelancer";
+
     // ============================================
     // CHECK PROJECT
     // ============================================
 
     const projectResult = await pool.query(
       `
-      SELECT id, status
+      SELECT
+        id,
+        client_id,
+        title,
+        status
       FROM projects
       WHERE id = $1
       `,
@@ -83,13 +90,15 @@ const createProposal = async (req, res) => {
       });
     }
 
+    const project = projectResult.rows[0];
+
     // ============================================
     // CHECK PROJECT STATUS
     // ============================================
 
     if (
-      projectResult.rows[0].status &&
-      projectResult.rows[0].status.toLowerCase() !== "open"
+      project.status &&
+      project.status.toLowerCase() !== "open"
     ) {
       return res.status(400).json({
         success: false,
@@ -114,7 +123,8 @@ const createProposal = async (req, res) => {
     if (existingProposal.rows.length > 0) {
       return res.status(409).json({
         success: false,
-        message: "You have already submitted a proposal for this project.",
+        message:
+          "You have already submitted a proposal for this project.",
       });
     }
 
@@ -144,12 +154,66 @@ const createProposal = async (req, res) => {
       ]
     );
 
+    const newProposal = result.rows[0];
+
+    // ============================================
+    // GET CLIENT USER ID
+    // ============================================
+
+    const clientUserResult = await pool.query(
+      `
+      SELECT user_id
+      FROM client_profiles
+      WHERE id = $1
+      `,
+      [project.client_id]
+    );
+
+    // ============================================
+    // CREATE NEW PROPOSAL NOTIFICATION
+    // ============================================
+
+    if (clientUserResult.rows.length > 0) {
+      const clientUserId = clientUserResult.rows[0].user_id;
+
+      await pool.query(
+        `
+        INSERT INTO notifications (
+          user_id,
+          type,
+          title,
+          message,
+          reference_id
+        )
+        VALUES ($1, $2, $3, $4, $5)
+        `,
+        [
+          clientUserId,
+          "new_proposal",
+          "New Proposal",
+          `${freelancerName} submitted a proposal for ${project.title}.`,
+          newProposal.id,
+        ]
+      );
+
+      console.log(
+        `NEW PROPOSAL NOTIFICATION CREATED FOR USER ${clientUserId}`
+      );
+    } else {
+      console.warn(
+        `CLIENT USER NOT FOUND FOR CLIENT PROFILE ${project.client_id}`
+      );
+    }
+
+    // ============================================
+    // RESPONSE
+    // ============================================
+
     return res.status(201).json({
       success: true,
       message: "Proposal submitted successfully.",
-      proposal: result.rows[0],
+      proposal: newProposal,
     });
-
   } catch (error) {
     console.error("CREATE PROPOSAL ERROR:", error);
 
@@ -195,7 +259,6 @@ const getFreelancerProposals = async (req, res) => {
       success: true,
       proposals: result.rows,
     });
-
   } catch (error) {
     console.error("GET FREELANCER PROPOSALS ERROR:", error);
 
@@ -241,7 +304,6 @@ const getProjectProposals = async (req, res) => {
       success: true,
       proposals: result.rows,
     });
-
   } catch (error) {
     console.error("GET PROJECT PROPOSALS ERROR:", error);
 
@@ -279,6 +341,7 @@ const acceptProposal = async (req, res) => {
         p.delivery_time,
         p.status,
         pr.client_id,
+        pr.title AS project_title,
         pr.status AS project_status,
         pr.deadline
       FROM proposals p
@@ -426,6 +489,107 @@ const acceptProposal = async (req, res) => {
     );
 
     // ============================================
+    // PROPOSAL ACCEPTED NOTIFICATION
+    // ============================================
+
+    await client.query(
+      `
+      INSERT INTO notifications (
+        user_id,
+        type,
+        title,
+        message,
+        reference_id
+      )
+      VALUES ($1, $2, $3, $4, $5)
+      `,
+      [
+        proposal.freelancer_id,
+        "proposal_accepted",
+        "Proposal Accepted",
+        `Your proposal for ${proposal.project_title} has been accepted.`,
+        proposal.id,
+      ]
+    );
+
+    console.log(
+      `PROPOSAL ACCEPTED NOTIFICATION CREATED FOR FREELANCER ${proposal.freelancer_id}`
+    );
+
+    // ============================================
+    // GET CLIENT USER ID
+    // ============================================
+
+    const clientUserResult = await client.query(
+      `
+      SELECT user_id
+      FROM client_profiles
+      WHERE id = $1
+      `,
+      [proposal.client_id]
+    );
+
+    // ============================================
+    // CONTRACT CREATED NOTIFICATION - FREELANCER
+    // ============================================
+
+    await client.query(
+      `
+      INSERT INTO notifications (
+        user_id,
+        type,
+        title,
+        message,
+        reference_id
+      )
+      VALUES ($1, $2, $3, $4, $5)
+      `,
+      [
+        proposal.freelancer_id,
+        "contract_created",
+        "Contract Created",
+        `A contract has been created for ${proposal.project_title}.`,
+        contractResult.rows[0].id,
+      ]
+    );
+
+    console.log(
+      `CONTRACT CREATED NOTIFICATION CREATED FOR FREELANCER ${proposal.freelancer_id}`
+    );
+
+    // ============================================
+    // CONTRACT CREATED NOTIFICATION - CLIENT
+    // ============================================
+
+    if (clientUserResult.rows.length > 0) {
+      const clientUserId = clientUserResult.rows[0].user_id;
+
+      await client.query(
+        `
+        INSERT INTO notifications (
+          user_id,
+          type,
+          title,
+          message,
+          reference_id
+        )
+        VALUES ($1, $2, $3, $4, $5)
+        `,
+        [
+          clientUserId,
+          "contract_created",
+          "Contract Created",
+          `A contract has been created for ${proposal.project_title}.`,
+          contractResult.rows[0].id,
+        ]
+      );
+
+      console.log(
+        `CONTRACT CREATED NOTIFICATION CREATED FOR CLIENT ${clientUserId}`
+      );
+    }
+
+    // ============================================
     // COMMIT
     // ============================================
 
@@ -439,7 +603,6 @@ const acceptProposal = async (req, res) => {
       project: updatedProject.rows[0],
       contract: contractResult.rows[0],
     });
-
   } catch (error) {
     await client.query("ROLLBACK");
 
@@ -450,7 +613,6 @@ const acceptProposal = async (req, res) => {
       message: "Server Error",
       error: error.message,
     });
-
   } finally {
     client.release();
   }
@@ -465,14 +627,20 @@ const rejectProposal = async (req, res) => {
     const { id } = req.params;
 
     // ============================================
-    // CHECK PROPOSAL
+    // CHECK PROPOSAL + PROJECT
     // ============================================
 
     const proposalCheck = await pool.query(
       `
-      SELECT id, status
-      FROM proposals
-      WHERE id = $1
+      SELECT
+        p.id,
+        p.freelancer_id,
+        p.status,
+        pr.title AS project_title
+      FROM proposals p
+      JOIN projects pr
+        ON p.project_id = pr.id
+      WHERE p.id = $1
       `,
       [id]
     );
@@ -484,14 +652,16 @@ const rejectProposal = async (req, res) => {
       });
     }
 
+    const proposal = proposalCheck.rows[0];
+
     // ============================================
     // CHECK STATUS
     // ============================================
 
-    if (proposalCheck.rows[0].status !== "pending") {
+    if (proposal.status !== "pending") {
       return res.status(400).json({
         success: false,
-        message: `This proposal has already been ${proposalCheck.rows[0].status}.`,
+        message: `This proposal has already been ${proposal.status}.`,
       });
     }
 
@@ -511,12 +681,43 @@ const rejectProposal = async (req, res) => {
       [id]
     );
 
+    // ============================================
+    // CREATE PROPOSAL REJECTED NOTIFICATION
+    // ============================================
+
+    await pool.query(
+      `
+      INSERT INTO notifications (
+        user_id,
+        type,
+        title,
+        message,
+        reference_id
+      )
+      VALUES ($1, $2, $3, $4, $5)
+      `,
+      [
+        proposal.freelancer_id,
+        "proposal_rejected",
+        "Proposal Rejected",
+        `Your proposal for ${proposal.project_title} has been rejected.`,
+        proposal.id,
+      ]
+    );
+
+    console.log(
+      `PROPOSAL REJECTED NOTIFICATION CREATED FOR FREELANCER ${proposal.freelancer_id}`
+    );
+
+    // ============================================
+    // RESPONSE
+    // ============================================
+
     return res.status(200).json({
       success: true,
       message: "Proposal rejected successfully.",
       proposal: result.rows[0],
     });
-
   } catch (error) {
     console.error("REJECT PROPOSAL ERROR:", error);
 

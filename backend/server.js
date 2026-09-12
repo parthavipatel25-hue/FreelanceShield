@@ -13,6 +13,8 @@ const projectRoutes = require("./routes/projectRoutes");
 const proposalRoutes = require("./routes/proposalRoutes");
 const portfolioRoutes = require("./routes/portfolioRoutes");
 const contractRoutes = require("./routes/contractRoutes");
+const messageRoutes = require("./routes/messageRoutes");
+const notificationRoutes = require("./routes/notificationRoutes");
 
 const app = express();
 
@@ -43,6 +45,9 @@ app.use("/api/projects", projectRoutes);
 app.use("/api/proposals", proposalRoutes);
 app.use("/api/portfolio", portfolioRoutes);
 app.use("/api/contracts", contractRoutes);
+app.use("/api/messages", messageRoutes);
+app.use("/api/notifications", notificationRoutes);
+
 
 // Test
 app.get("/", (req, res) => {
