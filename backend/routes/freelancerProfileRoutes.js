@@ -10,8 +10,8 @@ const {
   getFreelancerProfile,
   updateFreelancerProfile,
   getFreelancerProfileCompletion,
+  searchFreelancers,
 } = require("../controllers/freelancerProfileController");
-
 // ==================================================
 // UPLOAD DIRECTORIES
 // ==================================================
@@ -157,10 +157,9 @@ router.post(
 // GET PROFILE
 // ==================================================
 
-router.get(
-  "/:userId",
-  getFreelancerProfile
-);
+router.get("/search", searchFreelancers);
+
+router.get("/:userId", getFreelancerProfile);
 
 // ==================================================
 // UPDATE PROFILE

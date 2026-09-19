@@ -11,6 +11,7 @@ const {
   deleteProject,
   updateProjectProgress,
   completeProject,
+  searchProjects,
 } = require("../controllers/projectController");
 
 // ============================================
@@ -31,6 +32,13 @@ router.get("/", getAllProjects);
 // ============================================
 
 router.get("/client/:user_id", getClientProjects);
+
+// ============================================
+// SEARCH & FILTER PROJECTS
+// Week 10 - Search & Filters
+// ============================================
+
+router.get("/search", searchProjects);
 
 // ============================================
 // UPDATE PROJECT PROGRESS

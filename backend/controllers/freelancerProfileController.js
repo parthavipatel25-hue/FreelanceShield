@@ -503,6 +503,135 @@ const getFreelancerProfileCompletion =
     }
   };
 
+  // ==================================================
+// SEARCH & FILTER FREELANCERS
+// Week 10 - Search & Filters
+// ==================================================
+
+const searchFreelancers = async (req, res) => {
+  try {
+    const {
+      search,
+      category,
+      skills,
+      city,
+    } = req.query;
+
+    let query = `
+      SELECT
+        fp.id,
+        fp.user_id,
+        u.fullname,
+        u.email,
+        fp.profile_picture,
+        fp.professional_title,
+        fp.category,
+        fp.city,
+        fp.skills,
+        fp.about,
+        fp.linkedin_url,
+        fp.github_url
+      FROM freelancer_profiles fp
+      JOIN users u
+        ON fp.user_id = u.id
+      WHERE u.role = 'freelancer'
+    `;
+
+    const values = [];
+    let parameterIndex = 1;
+
+    // ==================================================
+    // SEARCH
+    // ==================================================
+
+    if (search && search.trim() !== "") {
+      query += `
+        AND (
+          LOWER(u.fullname) LIKE LOWER($${parameterIndex})
+          OR LOWER(COALESCE(fp.professional_title, '')) LIKE LOWER($${parameterIndex})
+          OR LOWER(COALESCE(fp.category, '')) LIKE LOWER($${parameterIndex})
+          OR LOWER(COALESCE(fp.skills, '')) LIKE LOWER($${parameterIndex})
+          OR LOWER(COALESCE(fp.about, '')) LIKE LOWER($${parameterIndex})
+        )
+      `;
+
+      values.push(`%${search.trim()}%`);
+      parameterIndex++;
+    }
+
+    // ==================================================
+    // CATEGORY FILTER
+    // ==================================================
+
+    if (category && category.trim() !== "") {
+      query += `
+        AND LOWER(COALESCE(fp.category, '')) = LOWER($${parameterIndex})
+      `;
+
+      values.push(category.trim());
+      parameterIndex++;
+    }
+
+    // ==================================================
+    // SKILLS FILTER
+    // ==================================================
+
+    if (skills && skills.trim() !== "") {
+      query += `
+        AND LOWER(COALESCE(fp.skills, '')) LIKE LOWER($${parameterIndex})
+      `;
+
+      values.push(`%${skills.trim()}%`);
+      parameterIndex++;
+    }
+
+    // ==================================================
+    // CITY / LOCATION FILTER
+    // ==================================================
+
+    if (city && city.trim() !== "") {
+      query += `
+        AND LOWER(COALESCE(fp.city, '')) LIKE LOWER($${parameterIndex})
+      `;
+
+      values.push(`%${city.trim()}%`);
+      parameterIndex++;
+    }
+
+    // ==================================================
+    // ORDER
+    // ==================================================
+
+    query += `
+      ORDER BY fp.id DESC
+    `;
+
+    // ==================================================
+    // EXECUTE QUERY
+    // ==================================================
+
+    const result = await pool.query(query, values);
+
+    return res.status(200).json({
+      success: true,
+      count: result.rows.length,
+      freelancers: result.rows,
+    });
+
+  } catch (error) {
+    console.error(
+      "SEARCH FREELANCERS ERROR:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Server Error",
+      error: error.message,
+    });
+  }
+};
+
 // ==================================================
 // EXPORT
 // ==================================================
@@ -512,4 +641,5 @@ module.exports = {
   getFreelancerProfile,
   updateFreelancerProfile,
   getFreelancerProfileCompletion,
+  searchFreelancers,
 };

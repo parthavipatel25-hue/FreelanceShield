@@ -1,11 +1,15 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Bell,
   Search,
   Settings,
   CheckCheck,
+  BriefcaseBusiness,
+  UserRound,
+  X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -27,8 +31,48 @@ interface Notification {
   created_at: string;
 }
 
+interface ProjectSearchResult {
+  id: number;
+  client_id: number;
+  client_user_id?: number;
+  client_name?: string;
+  client_user_name?: string;
+  client_email?: string;
+  title: string;
+  description: string;
+  category: string;
+  skills: string | null;
+  budget: number;
+  budget_type: string;
+  deadline: string;
+  status?: string;
+}
+
+interface FreelancerSearchResult {
+  id: number;
+  user_id: number;
+  fullname: string;
+  email: string;
+  profile_picture: string | null;
+  professional_title: string | null;
+  category: string | null;
+  city: string | null;
+  skills: string | null;
+  about: string | null;
+}
+
 export default function TopNavbar() {
+  const router = useRouter();
+
+  // ============================================
+  // USER
+  // ============================================
+
   const [user, setUser] = useState<User | null>(null);
+
+  // ============================================
+  // NOTIFICATIONS
+  // ============================================
 
   const [notifications, setNotifications] = useState<
     Notification[]
@@ -41,6 +85,26 @@ export default function TopNavbar() {
 
   const [loadingNotifications, setLoadingNotifications] =
     useState(false);
+
+  // ============================================
+  // SEARCH
+  // ============================================
+
+  const [searchText, setSearchText] = useState("");
+
+  const [searching, setSearching] = useState(false);
+
+  const [showSearchResults, setShowSearchResults] =
+    useState(false);
+
+  const [projectResults, setProjectResults] = useState<
+    ProjectSearchResult[]
+  >([]);
+
+  const [freelancerResults, setFreelancerResults] =
+    useState<FreelancerSearchResult[]>([]);
+
+  const [searchError, setSearchError] = useState("");
 
   // ============================================
   // LOAD LOGGED-IN USER
@@ -67,7 +131,9 @@ export default function TopNavbar() {
   // ============================================
 
   const fetchNotifications = async () => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      return;
+    }
 
     try {
       setLoadingNotifications(true);
@@ -105,11 +171,13 @@ export default function TopNavbar() {
   };
 
   // ============================================
-  // INITIAL LOAD + REFRESH
+  // INITIAL LOAD + AUTO REFRESH
   // ============================================
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      return;
+    }
 
     fetchNotifications();
 
@@ -117,8 +185,207 @@ export default function TopNavbar() {
       fetchNotifications();
     }, 10000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+    };
   }, [user?.id]);
+
+  // ============================================
+  // SEARCH
+  // ============================================
+
+  const handleSearch = async () => {
+    const trimmedSearch = searchText.trim();
+
+    // Empty search
+    if (trimmedSearch === "") {
+      setProjectResults([]);
+      setFreelancerResults([]);
+      setShowSearchResults(false);
+      setSearchError("");
+      return;
+    }
+
+    // Admin search
+    if (user?.role === "admin") {
+      setSearchError(
+        "Admin search will be available soon."
+      );
+
+      setProjectResults([]);
+      setFreelancerResults([]);
+      setShowSearchResults(true);
+
+      return;
+    }
+
+    try {
+      setSearching(true);
+      setSearchError("");
+
+      setProjectResults([]);
+      setFreelancerResults([]);
+
+      // ==========================================
+      // FREELANCER SEARCH
+      // Search:
+      // - Project name
+      // - Client name
+      // - Category
+      // - Skills
+      // - Description
+      // ==========================================
+
+      if (user?.role === "freelancer") {
+        const params = new URLSearchParams();
+
+        params.append("search", trimmedSearch);
+
+        const response = await fetch(
+          `http://localhost:5000/api/projects/search?${params.toString()}`
+        );
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+          throw new Error(
+            data.message ||
+              "Failed to search projects."
+          );
+        }
+
+        setProjectResults(data.projects || []);
+      }
+
+      // ==========================================
+      // CLIENT SEARCH
+      // Search:
+      // - Freelancer name
+      // - Professional title
+      // - Category
+      // - Skills
+      // - About
+      // ==========================================
+
+      if (user?.role === "client") {
+        const params = new URLSearchParams();
+
+        params.append("search", trimmedSearch);
+
+        const response = await fetch(
+          `http://localhost:5000/api/freelancer-profile/search?${params.toString()}`
+        );
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+          throw new Error(
+            data.message ||
+              "Failed to search freelancers."
+          );
+        }
+
+        setFreelancerResults(
+          data.freelancers || []
+        );
+      }
+
+      setShowSearchResults(true);
+    } catch (error) {
+      console.error("SEARCH ERROR:", error);
+
+      setSearchError(
+        error instanceof Error
+          ? error.message
+          : "Unable to perform search."
+      );
+
+      setShowSearchResults(true);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  // ============================================
+  // SEARCH ENTER KEY
+  // ============================================
+
+  const handleSearchKeyDown = (
+    event: React.KeyboardEvent<HTMLInputElement>
+  ) => {
+    if (event.key === "Enter") {
+      handleSearch();
+    }
+  };
+
+  // ============================================
+  // CLEAR SEARCH
+  // ============================================
+
+  const handleClearSearch = () => {
+    setSearchText("");
+    setProjectResults([]);
+    setFreelancerResults([]);
+    setSearchError("");
+    setShowSearchResults(false);
+  };
+
+  // ============================================
+  // FORMAT SKILLS
+  // ============================================
+
+  const formatSkills = (
+    skillsValue: string | null
+  ): string[] => {
+    if (!skillsValue) {
+      return [];
+    }
+
+    try {
+      const parsed = JSON.parse(skillsValue);
+
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map((skill) => String(skill).trim())
+          .filter((skill) => skill !== "");
+      }
+    } catch {
+      // Not JSON
+    }
+
+    return skillsValue
+      .split(",")
+      .map((skill) => skill.trim())
+      .filter((skill) => skill !== "");
+  };
+
+  // ============================================
+  // SELECT PROJECT
+  // ============================================
+
+  const handleProjectSelect = (
+    project: ProjectSearchResult
+  ) => {
+    setShowSearchResults(false);
+    setSearchText("");
+
+    router.push(
+      `/freelancer/browse-projects/${project.id}`
+    );
+  };
+
+  // ============================================
+  // SELECT FREELANCER
+  // ============================================
+
+  const handleFreelancerSelect = (
+  freelancer: FreelancerSearchResult
+) => {
+  setShowSearchResults(false);
+  setSearchText("");
+
+  router.push(`/client/freelancers/${freelancer.user_id}`);
+};
 
   // ============================================
   // MARK SINGLE NOTIFICATION AS READ
@@ -139,15 +406,16 @@ export default function TopNavbar() {
         const data = await response.json();
 
         if (response.ok && data.success) {
-          setNotifications((previousNotifications) =>
-            previousNotifications.map((item) =>
-              item.id === notification.id
-                ? {
-                    ...item,
-                    is_read: true,
-                  }
-                : item
-            )
+          setNotifications(
+            (previousNotifications) =>
+              previousNotifications.map((item) =>
+                item.id === notification.id
+                  ? {
+                      ...item,
+                      is_read: true,
+                    }
+                  : item
+              )
           );
 
           setUnreadCount((previousCount) =>
@@ -217,7 +485,7 @@ export default function TopNavbar() {
       : "Search freelancers, skills, services...";
 
   // ============================================
-  // TIME FORMAT
+  // FORMAT NOTIFICATION TIME
   // ============================================
 
   const formatNotificationTime = (
@@ -258,7 +526,6 @@ export default function TopNavbar() {
 
   return (
     <header className="sticky top-0 z-30 border-b border-gray-200 bg-white">
-
       <div
         className="
           flex
@@ -273,13 +540,11 @@ export default function TopNavbar() {
           lg:px-8
         "
       >
-
-        {/* ================================= */}
-        {/* SEARCH */}
-        {/* ================================= */}
+        {/* ============================================
+            SEARCH
+        ============================================ */}
 
         <div className="relative min-w-0 max-w-[420px] flex-1">
-
           <Search
             size={19}
             className="
@@ -294,6 +559,18 @@ export default function TopNavbar() {
 
           <input
             type="text"
+            value={searchText}
+            onChange={(event) => {
+              setSearchText(event.target.value);
+
+              if (event.target.value.trim() === "") {
+                setShowSearchResults(false);
+                setSearchError("");
+                setProjectResults([]);
+                setFreelancerResults([]);
+              }
+            }}
+            onKeyDown={handleSearchKeyDown}
             placeholder={placeholder}
             className="
               w-full
@@ -303,7 +580,7 @@ export default function TopNavbar() {
               bg-gray-50
               py-2.5
               pl-10
-              pr-3
+              pr-10
               text-xs
               outline-none
               transition-all
@@ -314,25 +591,436 @@ export default function TopNavbar() {
               focus:ring-emerald-100
               sm:py-3
               sm:pl-12
-              sm:pr-4
+              sm:pr-10
               sm:text-sm
             "
           />
 
+          {/* SEARCH BUTTON */}
+
+          <button
+            type="button"
+            onClick={handleSearch}
+            disabled={searching}
+            className="
+              absolute
+              right-2
+              top-1/2
+              flex
+              h-8
+              w-8
+              -translate-y-1/2
+              items-center
+              justify-center
+              rounded-lg
+              text-gray-400
+              transition
+              hover:bg-emerald-50
+              hover:text-emerald-600
+              disabled:cursor-not-allowed
+              disabled:opacity-50
+              sm:right-3
+            "
+            aria-label="Search"
+          >
+            <Search size={16} />
+          </button>
+
+          {/* CLEAR BUTTON */}
+
+          {searchText && (
+            <button
+              type="button"
+              onClick={handleClearSearch}
+              className="
+                absolute
+                right-10
+                top-1/2
+                -translate-y-1/2
+                text-gray-400
+                transition
+                hover:text-gray-600
+                sm:right-12
+              "
+              aria-label="Clear search"
+            >
+              <X size={17} />
+            </button>
+          )}
+
+          {/* ==========================================
+              SEARCH RESULTS DROPDOWN
+          ========================================== */}
+
+          {showSearchResults && (
+            <div
+              className="
+                absolute
+                left-0
+                right-0
+                top-full
+                z-50
+                mt-3
+                overflow-hidden
+                rounded-2xl
+                border
+                border-gray-200
+                bg-white
+                shadow-xl
+              "
+            >
+              {/* SEARCHING */}
+
+              {searching && (
+                <div className="px-4 py-8 text-center">
+                  <div
+                    className="
+                      mx-auto
+                      h-7
+                      w-7
+                      animate-spin
+                      rounded-full
+                      border-2
+                      border-emerald-200
+                      border-t-emerald-600
+                    "
+                  />
+
+                  <p className="mt-3 text-sm text-gray-500">
+                    Searching...
+                  </p>
+                </div>
+              )}
+
+              {/* ERROR */}
+
+              {!searching && searchError && (
+                <div className="px-4 py-6 text-center">
+                  <p className="text-sm font-medium text-red-600">
+                    {searchError}
+                  </p>
+                </div>
+              )}
+
+              {/* ========================================
+                  FREELANCER PROJECT RESULTS
+              ======================================== */}
+
+              {!searching &&
+                !searchError &&
+                user?.role === "freelancer" && (
+                  <div>
+                    <div className="border-b border-gray-100 px-4 py-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                        Projects
+                      </p>
+                    </div>
+
+                    {projectResults.length === 0 ? (
+                      <div className="px-4 py-8 text-center">
+                        <BriefcaseBusiness
+                          size={28}
+                          className="mx-auto text-gray-300"
+                        />
+
+                        <p className="mt-3 text-sm font-semibold text-gray-700">
+                          No projects found
+                        </p>
+
+                        <p className="mt-1 text-xs text-gray-500">
+                          Try another project name,
+                          client name, skill, or category.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="max-h-[400px] overflow-y-auto">
+                        {projectResults.map(
+                          (project) => (
+                            <button
+                              key={project.id}
+                              type="button"
+                              onClick={() =>
+                                handleProjectSelect(
+                                  project
+                                )
+                              }
+                              className="
+                                flex
+                                w-full
+                                gap-3
+                                border-b
+                                border-gray-100
+                                px-4
+                                py-4
+                                text-left
+                                transition
+                                hover:bg-emerald-50
+                              "
+                            >
+                              {/* PROJECT ICON */}
+
+                              <div
+                                className="
+                                  flex
+                                  h-10
+                                  w-10
+                                  shrink-0
+                                  items-center
+                                  justify-center
+                                  rounded-lg
+                                  bg-emerald-100
+                                "
+                              >
+                                <BriefcaseBusiness
+                                  size={19}
+                                  className="text-emerald-600"
+                                />
+                              </div>
+
+                              {/* PROJECT INFO */}
+
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm font-semibold text-gray-900">
+                                  {project.title}
+                                </p>
+
+                                <p className="mt-1 text-xs text-emerald-600">
+                                  {project.category}
+                                </p>
+
+                                {/* CLIENT NAME */}
+
+                                {(project.client_name ||
+                                  project.client_user_name) && (
+                                  <p className="mt-1 text-xs font-medium text-gray-600">
+                                    Client:{" "}
+                                    {project.client_name ||
+                                      project.client_user_name}
+                                  </p>
+                                )}
+
+                                {/* SKILLS */}
+
+                                <div className="mt-2 flex flex-wrap gap-1">
+                                  {formatSkills(
+                                    project.skills
+                                  )
+                                    .slice(0, 3)
+                                    .map(
+                                      (
+                                        skill,
+                                        index
+                                      ) => (
+                                        <span
+                                          key={`${skill}-${index}`}
+                                          className="
+                                            rounded-full
+                                            bg-gray-100
+                                            px-2
+                                            py-0.5
+                                            text-[10px]
+                                            font-medium
+                                            text-gray-600
+                                          "
+                                        >
+                                          {skill}
+                                        </span>
+                                      )
+                                    )}
+                                </div>
+
+                                <p className="mt-2 text-[11px] font-medium text-emerald-600">
+                                  Click to view project →
+                                </p>
+                              </div>
+                            </button>
+                          )
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+              {/* ========================================
+                  CLIENT FREELANCER RESULTS
+              ======================================== */}
+
+              {!searching &&
+                !searchError &&
+                user?.role === "client" && (
+                  <div>
+                    <div className="border-b border-gray-100 px-4 py-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                        Freelancers
+                      </p>
+                    </div>
+
+                    {freelancerResults.length === 0 ? (
+                      <div className="px-4 py-8 text-center">
+                        <UserRound
+                          size={28}
+                          className="mx-auto text-gray-300"
+                        />
+
+                        <p className="mt-3 text-sm font-semibold text-gray-700">
+                          No freelancers found
+                        </p>
+
+                        <p className="mt-1 text-xs text-gray-500">
+                          Try another name, skill,
+                          category, or service.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="max-h-[400px] overflow-y-auto">
+                        {freelancerResults.map(
+                          (freelancer) => {
+                            const freelancerSkills =
+                              formatSkills(
+                                freelancer.skills
+                              );
+
+                            return (
+                              <button
+                                key={freelancer.user_id}
+                                type="button"
+                                onClick={() =>
+                                  handleFreelancerSelect(
+                                    freelancer
+                                  )
+                                }
+                                className="
+                                  flex
+                                  w-full
+                                  gap-3
+                                  border-b
+                                  border-gray-100
+                                  px-4
+                                  py-4
+                                  text-left
+                                  transition
+                                  hover:bg-emerald-50
+                                "
+                              >
+                                {/* PROFILE IMAGE */}
+
+                                <div
+                                  className="
+                                    flex
+                                    h-11
+                                    w-11
+                                    shrink-0
+                                    items-center
+                                    justify-center
+                                    overflow-hidden
+                                    rounded-full
+                                    bg-emerald-100
+                                  "
+                                >
+                                  {freelancer.profile_picture ? (
+                                    <img
+                                      src={`http://localhost:5000${freelancer.profile_picture}`}
+                                      alt={
+                                        freelancer.fullname
+                                      }
+                                      className="
+                                        h-full
+                                        w-full
+                                        object-cover
+                                      "
+                                    />
+                                  ) : (
+                                    <UserRound
+                                      size={21}
+                                      className="text-emerald-600"
+                                    />
+                                  )}
+                                </div>
+
+                                {/* FREELANCER INFORMATION */}
+
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate text-sm font-semibold text-gray-900">
+                                    {
+                                      freelancer.fullname
+                                    }
+                                  </p>
+
+                                  {freelancer.professional_title && (
+                                    <p className="mt-0.5 truncate text-xs text-emerald-600">
+                                      {
+                                        freelancer.professional_title
+                                      }
+                                    </p>
+                                  )}
+
+                                  {freelancer.category && (
+                                    <p className="mt-1 text-xs text-gray-500">
+                                      {
+                                        freelancer.category
+                                      }
+
+                                      {freelancer.city
+                                        ? ` • ${freelancer.city}`
+                                        : ""}
+                                    </p>
+                                  )}
+
+                                  {freelancerSkills.length >
+                                    0 && (
+                                    <div className="mt-2 flex flex-wrap gap-1">
+                                      {freelancerSkills
+                                        .slice(0, 3)
+                                        .map(
+                                          (
+                                            skill,
+                                            index
+                                          ) => (
+                                            <span
+                                              key={`${skill}-${index}`}
+                                              className="
+                                                rounded-full
+                                                bg-gray-100
+                                                px-2
+                                                py-0.5
+                                                text-[10px]
+                                                font-medium
+                                                text-gray-600
+                                              "
+                                            >
+                                              {skill}
+                                            </span>
+                                          )
+                                        )}
+                                    </div>
+                                  )}
+
+                                  <p className="mt-2 text-[11px] font-medium text-emerald-600">
+                                    Click to select freelancer →
+                                  </p>
+                                </div>
+                              </button>
+                            );
+                          }
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+            </div>
+          )}
         </div>
 
-        {/* ================================= */}
-        {/* RIGHT SIDE */}
-        {/* ================================= */}
+        {/* ============================================
+            RIGHT SIDE
+        ============================================ */}
 
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-
-          {/* ================================= */}
-          {/* NOTIFICATIONS */}
-          {/* ================================= */}
+          {/* ============================================
+              NOTIFICATIONS
+          ============================================ */}
 
           <div className="relative">
-
             <button
               type="button"
               aria-label="Notifications"
@@ -359,13 +1047,10 @@ export default function TopNavbar() {
                 sm:w-11
               "
             >
-
               <Bell
                 size={19}
                 className="text-gray-700 sm:h-[22px] sm:w-[22px]"
               />
-
-              {/* UNREAD BADGE */}
 
               {unreadCount > 0 && (
                 <span
@@ -391,12 +1076,11 @@ export default function TopNavbar() {
                     : unreadCount}
                 </span>
               )}
-
             </button>
 
-            {/* ================================= */}
-            {/* NOTIFICATION DROPDOWN */}
-            {/* ================================= */}
+            {/* ==========================================
+                NOTIFICATION DROPDOWN
+            ========================================== */}
 
             {showNotifications && (
               <div
@@ -414,11 +1098,9 @@ export default function TopNavbar() {
                   shadow-xl
                 "
               >
-
                 {/* HEADER */}
 
                 <div className="flex items-center justify-between border-b border-gray-100 px-4 py-4">
-
                   <div>
                     <h2 className="text-sm font-bold text-gray-900">
                       Notifications
@@ -449,12 +1131,12 @@ export default function TopNavbar() {
                       Mark all as read
                     </button>
                   )}
-
                 </div>
 
                 {/* NOTIFICATION LIST */}
 
                 <div className="max-h-[420px] overflow-y-auto">
+                  {/* LOADING */}
 
                   {loadingNotifications && (
                     <div className="px-4 py-8 text-center text-sm text-gray-500">
@@ -462,10 +1144,11 @@ export default function TopNavbar() {
                     </div>
                   )}
 
+                  {/* EMPTY */}
+
                   {!loadingNotifications &&
                     notifications.length === 0 && (
                       <div className="px-4 py-10 text-center">
-
                         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50">
                           <Bell
                             size={22}
@@ -480,9 +1163,10 @@ export default function TopNavbar() {
                         <p className="mt-1 text-xs text-gray-500">
                           Important updates will appear here.
                         </p>
-
                       </div>
                     )}
+
+                  {/* NOTIFICATIONS */}
 
                   {!loadingNotifications &&
                     notifications.length > 0 &&
@@ -514,11 +1198,9 @@ export default function TopNavbar() {
                             }
                           `}
                         >
-
                           {/* UNREAD INDICATOR */}
 
                           <div className="pt-1">
-
                             <span
                               className={`
                                 block
@@ -532,15 +1214,12 @@ export default function TopNavbar() {
                                 }
                               `}
                             />
-
                           </div>
 
                           {/* CONTENT */}
 
                           <div className="min-w-0 flex-1">
-
                             <div className="flex items-start justify-between gap-2">
-
                               <p className="text-sm font-semibold text-gray-900">
                                 {notification.title}
                               </p>
@@ -550,29 +1229,23 @@ export default function TopNavbar() {
                                   notification.created_at
                                 )}
                               </span>
-
                             </div>
 
                             <p className="mt-1 text-xs leading-5 text-gray-600">
                               {notification.message}
                             </p>
-
                           </div>
-
                         </button>
                       )
                     )}
-
                 </div>
-
               </div>
             )}
-
           </div>
 
-          {/* ================================= */}
-          {/* SETTINGS */}
-          {/* ================================= */}
+          {/* ============================================
+              SETTINGS
+          ============================================ */}
 
           <Link
             href="/settings"
@@ -600,7 +1273,6 @@ export default function TopNavbar() {
               sm:py-3
             "
           >
-
             <Settings
               size={19}
               className="sm:h-5 sm:w-5"
@@ -609,13 +1281,9 @@ export default function TopNavbar() {
             <span className="hidden font-medium sm:block">
               Settings
             </span>
-
           </Link>
-
         </div>
-
       </div>
-
     </header>
   );
 }

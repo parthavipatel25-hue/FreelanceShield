@@ -17,6 +17,8 @@ import {
   Menu,
   X,
   MessageCircle,
+  ListChecks,
+  Star,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -34,6 +36,10 @@ export default function Sidebar({ role }: SidebarProps) {
   const router = useRouter();
 
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  // =========================================
+  // GET LOGGED-IN USER
+  // =========================================
 
   let user: LoggedInUser = {
     fullname: "Guest",
@@ -115,13 +121,21 @@ export default function Sidebar({ role }: SidebarProps) {
       icon: FileSignature,
       href: "/freelancer/contracts",
     },
-
     {
-  title: "Messages",
-  icon: MessageCircle,
-  href: "/freelancer/messages",
+      title: "Milestones",
+      icon: ListChecks,
+      href: "/freelancer/milestones",
+    },
+    {
+  title: "Ratings & Reviews",
+  icon: Star,
+  href: "/freelancer/reviews",
 },
-
+    {
+      title: "Messages",
+      icon: MessageCircle,
+      href: "/freelancer/messages",
+    },
   ];
 
   // =========================================
@@ -149,18 +163,28 @@ export default function Sidebar({ role }: SidebarProps) {
       icon: FileText,
       href: "/client/proposals",
     },
-     {
-    title: "My Contracts",
-    icon: FileSignature,
-    href: "/client/contracts",
-  },
-
-  {
-  title: "Messages",
-  icon: MessageCircle,
-  href: "/client/messages",
-},
-
+    {
+      title: "My Contracts",
+      icon: FileSignature,
+      href: "/client/contracts",
+    },
+    
+    {
+      title: "Milestones",
+      icon: ListChecks,
+      href: "/client/milestones",
+    },
+    {
+      title: "Ratings & Reviews",
+      icon: Star,
+      href: "/client/reviews",
+    },
+    
+    {
+      title: "Messages",
+      icon: MessageCircle,
+      href: "/client/messages",
+    },
     {
       title: "Post Project",
       icon: PlusCircle,
@@ -187,6 +211,8 @@ export default function Sidebar({ role }: SidebarProps) {
     localStorage.removeItem("user");
     localStorage.removeItem("token");
 
+    setMobileOpen(false);
+
     router.push("/login");
   };
 
@@ -200,35 +226,48 @@ export default function Sidebar({ role }: SidebarProps) {
 
   return (
     <>
-      {/* MOBILE MENU BUTTON */}
+      {/* =========================================
+          MOBILE MENU BUTTON
+      ========================================= */}
 
-      <button
-        type="button"
-        onClick={() => setMobileOpen(true)}
-        className="
-          fixed
-          left-4
-          top-4
-          z-40
-          flex
-          h-11
-          w-11
-          items-center
-          justify-center
-          rounded-xl
-          bg-emerald-600
-          text-white
-          shadow-lg
-          transition
-          hover:bg-emerald-700
-          lg:hidden
-        "
-        aria-label="Open menu"
-      >
-        <Menu size={23} />
-      </button>
+      {!mobileOpen && (
+        <button
+          type="button"
+          onClick={() => setMobileOpen(true)}
+          className="
+            fixed
+            left-4
+            top-4
+            z-40
 
-      {/* MOBILE OVERLAY */}
+            flex
+            h-11
+            w-11
+            items-center
+            justify-center
+
+            rounded-xl
+            bg-emerald-600
+            text-white
+            shadow-lg
+
+            transition-all
+            duration-300
+
+            hover:bg-emerald-700
+            active:scale-95
+
+            lg:hidden
+          "
+          aria-label="Open menu"
+        >
+          <Menu size={23} />
+        </button>
+      )}
+
+      {/* =========================================
+          MOBILE OVERLAY
+      ========================================= */}
 
       {mobileOpen && (
         <div
@@ -236,15 +275,19 @@ export default function Sidebar({ role }: SidebarProps) {
             fixed
             inset-0
             z-40
+
             bg-black/40
             backdrop-blur-[2px]
+
             lg:hidden
           "
           onClick={() => setMobileOpen(false)}
         />
       )}
 
-      {/* SIDEBAR */}
+      {/* =========================================
+          SIDEBAR
+      ========================================= */}
 
       <aside
         className={`
@@ -252,50 +295,104 @@ export default function Sidebar({ role }: SidebarProps) {
           left-0
           top-0
           z-50
+
           flex
           h-screen
-          w-72
+          w-[280px]
+          max-w-[85vw]
           flex-col
+
           border-r
           border-gray-200
           bg-white
-          shadow-lg
+          shadow-xl
+
           transition-transform
           duration-300
           ease-in-out
 
-          ${mobileOpen ? "translate-x-0" : "-translate-x-full"}
+          ${
+            mobileOpen
+              ? "translate-x-0"
+              : "-translate-x-full"
+          }
 
-          lg:translate-x-0
           lg:z-30
+          lg:w-72
+          lg:translate-x-0
         `}
       >
-        {/* LOGO */}
+        {/* =========================================
+            LOGO SECTION
+        ========================================= */}
 
-        <div className="border-b border-gray-200 px-6 py-6 sm:px-7 sm:py-8">
-          <div className="flex items-start justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-emerald-600 sm:text-3xl">
+        <div
+          className="
+            shrink-0
+            border-b
+            border-gray-200
+            px-5
+            py-5
+
+            sm:px-6
+            sm:py-6
+
+            lg:px-7
+            lg:py-7
+          "
+        >
+          <div className="flex items-start justify-between gap-3">
+            {/* LOGO */}
+
+            <div className="min-w-0">
+              <h1
+                className="
+                  truncate
+                  text-2xl
+                  font-bold
+                  text-emerald-600
+
+                  sm:text-3xl
+                "
+              >
                 FreelanceShield
               </h1>
 
-              <p className="mt-2 text-xs text-gray-500 sm:text-sm">
+              <p
+                className="
+                  mt-1
+                  text-xs
+                  text-gray-500
+
+                  sm:mt-2
+                  sm:text-sm
+                "
+              >
                 Work Smart. Earn Better.
               </p>
             </div>
 
-            {/* Mobile Close Button */}
+            {/* MOBILE CLOSE BUTTON */}
 
             <button
               type="button"
               onClick={() => setMobileOpen(false)}
               className="
+                flex
+                h-9
+                w-9
+                shrink-0
+                items-center
+                justify-center
+
                 rounded-lg
-                p-2
                 text-gray-500
+
                 transition
+
                 hover:bg-gray-100
                 hover:text-gray-700
+
                 lg:hidden
               "
               aria-label="Close menu"
@@ -305,14 +402,44 @@ export default function Sidebar({ role }: SidebarProps) {
           </div>
         </div>
 
-        {/* NAVIGATION */}
+        {/* =========================================
+            NAVIGATION
+        ========================================= */}
 
-        <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-5 sm:py-7">
-          <p className="mb-4 px-1 text-xs font-bold uppercase tracking-widest text-gray-400">
+        <div
+          className="
+            flex-1
+            overflow-y-auto
+
+            px-3
+            py-5
+
+            sm:px-4
+            sm:py-6
+
+            lg:px-5
+            lg:py-7
+          "
+        >
+          <p
+            className="
+              mb-3
+              px-2
+
+              text-[11px]
+              font-bold
+              uppercase
+              tracking-widest
+              text-gray-400
+
+              sm:mb-4
+              sm:text-xs
+            "
+          >
             MAIN MENU
           </p>
 
-          <div className="space-y-2">
+          <div className="space-y-1.5 sm:space-y-2">
             {menu.map((item) => {
               const Icon = item.icon;
 
@@ -320,6 +447,8 @@ export default function Sidebar({ role }: SidebarProps) {
                 pathname === item.href ||
                 (item.href !== "#" &&
                   item.href !== "/client" &&
+                  item.href !== "/admin" &&
+                  item.href !== "/freelancer" &&
                   pathname.startsWith(`${item.href}/`));
 
               return (
@@ -329,15 +458,23 @@ export default function Sidebar({ role }: SidebarProps) {
                   onClick={handleNavigation}
                   className={`
                     flex
+                    min-h-[46px]
                     items-center
-                    gap-4
+                    gap-3
+
                     rounded-xl
                     px-4
                     py-3
+
+                    text-sm
                     font-medium
+
                     transition-all
-                    duration-300
+                    duration-200
+
+                    sm:gap-4
                     sm:px-5
+                    sm:text-base
 
                     ${
                       active
@@ -346,46 +483,90 @@ export default function Sidebar({ role }: SidebarProps) {
                     }
                   `}
                 >
-                  <Icon size={21} />
+                  <Icon
+                    size={20}
+                    className="shrink-0"
+                  />
 
-                  <span>{item.title}</span>
+                  <span className="truncate">
+                    {item.title}
+                  </span>
                 </Link>
               );
             })}
 
-            {/* LOGOUT */}
+            {/* =========================================
+                LOGOUT
+            ========================================= */}
 
             <button
               type="button"
               onClick={handleLogout}
               className="
+                mt-2
                 flex
+                min-h-[46px]
                 w-full
                 items-center
-                gap-4
+                gap-3
+
                 rounded-xl
                 px-4
                 py-3
+
+                text-sm
                 font-medium
                 text-red-500
+
                 transition-all
-                duration-300
+                duration-200
+
                 hover:bg-red-50
                 hover:text-red-600
+
+                sm:gap-4
                 sm:px-5
+                sm:text-base
               "
             >
-              <LogOut size={21} />
+              <LogOut
+                size={20}
+                className="shrink-0"
+              />
 
               <span>Logout</span>
             </button>
           </div>
         </div>
 
-        {/* USER SECTION */}
+        {/* =========================================
+            USER SECTION
+        ========================================= */}
 
-        <div className="border-t border-gray-200 p-4">
-          <div className="flex items-center gap-3 rounded-xl bg-gray-50 p-3">
+        <div
+          className="
+            shrink-0
+            border-t
+            border-gray-200
+
+            p-3
+
+            sm:p-4
+          "
+        >
+          <div
+            className="
+              flex
+              items-center
+              gap-3
+
+              rounded-xl
+              bg-gray-50
+              p-3
+            "
+          >
+            {/* USER AVATAR */}
+
             <div
               className="
                 flex
@@ -394,23 +575,44 @@ export default function Sidebar({ role }: SidebarProps) {
                 shrink-0
                 items-center
                 justify-center
+
                 rounded-full
                 bg-emerald-100
+
+                text-sm
                 font-semibold
                 text-emerald-600
               "
             >
               {user.fullname
-                ? user.fullname.charAt(0).toUpperCase()
+                ? user.fullname
+                    .charAt(0)
+                    .toUpperCase()
                 : "G"}
             </div>
 
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-gray-800">
+            {/* USER INFORMATION */}
+
+            <div className="min-w-0 flex-1">
+              <p
+                className="
+                  truncate
+                  text-sm
+                  font-semibold
+                  text-gray-800
+                "
+              >
                 {user.fullname}
               </p>
 
-              <p className="truncate text-xs capitalize text-gray-500">
+              <p
+                className="
+                  truncate
+                  text-xs
+                  capitalize
+                  text-gray-500
+                "
+              >
                 {role}
               </p>
             </div>
@@ -420,4 +622,3 @@ export default function Sidebar({ role }: SidebarProps) {
     </>
   );
 }
-
