@@ -1,4 +1,5 @@
 const express = require("express");
+const app = express();
 const cors = require("cors");
 const path = require("path");
 require("dotenv").config();
@@ -17,8 +18,7 @@ const reviewRoutes = require("./routes/reviewRoutes");
 const messageRoutes = require("./routes/messageRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
 const milestoneRoutes = require("./routes/milestoneRoutes");
-
-const app = express();
+const userVerificationRoutes = require("./routes/userVerificationRoutes");
 
 app.use(
   cors({
@@ -51,9 +51,8 @@ app.use("/api/reviews", reviewRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/milestones", milestoneRoutes);
+app.use("/api/user-verification", userVerificationRoutes);
 
-
-// Test
 app.get("/", (req, res) => {
   res.status(200).send("🚀 FreelanceShield Backend is Running...");
 });

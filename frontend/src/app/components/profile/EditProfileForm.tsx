@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+
 import {
   User,
   BriefcaseBusiness,
@@ -35,26 +36,17 @@ interface User {
 interface ProfileData {
   id?: number;
   user_id?: number;
-
   profile_picture?: string | null;
-
   professional_title?: string | null;
   category?: string | null;
-
   company_name?: string | null;
   industry?: string | null;
-
   city?: string | null;
-
   skills?: string[] | string | null;
-
   about?: string | null;
-
   linkedin_url?: string | null;
   github_url?: string | null;
-
   resume_url?: string | null;
-
   company_website?: string | null;
 }
 
@@ -79,8 +71,8 @@ const API_BASE_URL = "http://localhost:5000";
 
 const cleanSingleSkill = (value: string): string => {
   return value
-    .replace(/^\s*[\["']+/, "")
-    .replace(/[\]"']+\s*$/, "")
+    .replace(/^\s*[\[\{"']+/, "")
+    .replace(/[\]\}"']+\s*$/, "")
     .trim();
 };
 
@@ -108,7 +100,6 @@ const normalizeSkills = (
       return;
     }
 
-    // Avoid duplicates
     const exists = result.some(
       (existing) =>
         existing.toLowerCase() === cleaned.toLowerCase()
@@ -135,10 +126,6 @@ const normalizeSkills = (
         return;
       }
 
-      // ----------------------------------------------
-      // Try JSON parsing
-      // ----------------------------------------------
-
       try {
         const parsed = JSON.parse(current);
 
@@ -157,10 +144,6 @@ const normalizeSkills = (
       } catch {
         // Not JSON
       }
-
-      // ----------------------------------------------
-      // If item contains comma-separated values
-      // ----------------------------------------------
 
       if (current.includes(",")) {
         current
@@ -187,10 +170,6 @@ const normalizeSkills = (
       return [];
     }
 
-    // ----------------------------------------------
-    // Parse multiple layers of JSON
-    // ----------------------------------------------
-
     for (let i = 0; i < 5; i++) {
       try {
         const parsed = JSON.parse(current);
@@ -210,18 +189,10 @@ const normalizeSkills = (
       }
     }
 
-    // ----------------------------------------------
-    // Remove outer brackets
-    // ----------------------------------------------
-
     current = current
       .replace(/^\s*\[/, "")
       .replace(/\]\s*$/, "")
       .trim();
-
-    // ----------------------------------------------
-    // Comma-separated fallback
-    // ----------------------------------------------
 
     if (current.includes(",")) {
       current
@@ -230,10 +201,6 @@ const normalizeSkills = (
 
       return result;
     }
-
-    // ----------------------------------------------
-    // Single skill
-    // ----------------------------------------------
 
     addSkill(current);
 
@@ -275,7 +242,6 @@ export default function EditProfileForm({
 
   const [category, setCategory] = useState("");
 
-  // Always keep skills as an array
   const [skills, setSkills] = useState<string[]>([]);
 
   const [skillInput, setSkillInput] = useState("");
@@ -295,6 +261,7 @@ export default function EditProfileForm({
   // ==================================================
 
   const [companyName, setCompanyName] = useState("");
+
   const [industry, setIndustry] = useState("");
 
   // ==================================================
@@ -302,7 +269,9 @@ export default function EditProfileForm({
   // ==================================================
 
   const [city, setCity] = useState("");
+
   const [about, setAbout] = useState("");
+
   const [linkedinUrl, setLinkedinUrl] = useState("");
 
   // ==================================================
@@ -310,6 +279,7 @@ export default function EditProfileForm({
   // ==================================================
 
   const [githubUrl, setGithubUrl] = useState("");
+
   const [companyWebsite, setCompanyWebsite] =
     useState("");
 
@@ -318,6 +288,7 @@ export default function EditProfileForm({
   // ==================================================
 
   const [loading, setLoading] = useState(false);
+
   const [profileLoading, setProfileLoading] =
     useState(true);
 
@@ -351,6 +322,8 @@ export default function EditProfileForm({
   // ==================================================
 
   useEffect(() => {
+    let isMounted = true;
+
     const loadProfile = async () => {
       try {
         setProfileLoading(true);
@@ -362,15 +335,44 @@ export default function EditProfileForm({
 
         const response = await fetch(endpoint);
 
+        // ==================================================
+        // PROFILE DOES NOT EXIST YET
+        // ==================================================
+
         if (response.status === 404) {
+          if (!isMounted) {
+            return;
+          }
+
+          setProfileLoading(false);
+
           return;
         }
 
+        // ==================================================
+        // OTHER HTTP ERROR
+        // ==================================================
+
         if (!response.ok) {
-          throw new Error(
-            "Failed to load profile"
-          );
+          let errorMessage =
+            "Failed to load profile.";
+
+          try {
+            const errorData = await response.json();
+
+            if (errorData?.message) {
+              errorMessage = errorData.message;
+            }
+          } catch {
+            // Keep default message
+          }
+
+          throw new Error(errorMessage);
         }
+
+        // ==================================================
+        // READ RESPONSE
+        // ==================================================
 
         const data = await response.json();
 
@@ -382,7 +384,7 @@ export default function EditProfileForm({
         const profile: ProfileData =
           data?.profile || data;
 
-        if (!profile) {
+        if (!profile || !isMounted) {
           return;
         }
 
@@ -404,11 +406,6 @@ export default function EditProfileForm({
           setCategory(
             profile.category || ""
           );
-
-          // ----------------------------------------------
-          // IMPORTANT:
-          // Convert backend skills into clean array
-          // ----------------------------------------------
 
           const cleanedSkills =
             normalizeSkills(profile.skills);
@@ -448,8 +445,8 @@ export default function EditProfileForm({
             profile.company_website || ""
           );
 
-          // Client should not have freelancer skills
           setSkills([]);
+
           setGithubUrl("");
         }
 
@@ -457,13 +454,9 @@ export default function EditProfileForm({
         // COMMON
         // ==================================================
 
-        setCity(
-          profile.city || ""
-        );
+        setCity(profile.city || "");
 
-        setAbout(
-          profile.about || ""
-        );
+        setAbout(profile.about || "");
 
         setLinkedinUrl(
           profile.linkedin_url || ""
@@ -474,15 +467,27 @@ export default function EditProfileForm({
           error
         );
 
+        if (!isMounted) {
+          return;
+        }
+
         setMessage(
-          "Unable to load profile information."
+          error instanceof Error
+            ? error.message
+            : "Unable to load profile information."
         );
       } finally {
-        setProfileLoading(false);
+        if (isMounted) {
+          setProfileLoading(false);
+        }
       }
     };
 
     loadProfile();
+
+    return () => {
+      isMounted = false;
+    };
   }, [
     user.id,
     user.fullname,
@@ -495,9 +500,7 @@ export default function EditProfileForm({
   // ==================================================
 
   useEffect(() => {
-    setFullname(
-      user.fullname || ""
-    );
+    setFullname(user.fullname || "");
   }, [user.fullname]);
 
   // ==================================================
@@ -510,11 +513,6 @@ export default function EditProfileForm({
     if (!input) {
       return;
     }
-
-    // Support entering:
-    // React
-    // React, Next.js
-    // ["React","Next.js"]
 
     const newSkills = normalizeSkills(input);
 
@@ -690,11 +688,6 @@ export default function EditProfileForm({
           linkedinUrl.trim()
         );
 
-        // ==================================================
-        // IMPORTANT:
-        // Skills are sent as ONE clean JSON array
-        // ==================================================
-
         const cleanedSkills =
           normalizeSkills(skills);
 
@@ -788,12 +781,10 @@ export default function EditProfileForm({
         const profileResponse =
           await fetch(endpoint, {
             method: "PUT",
-
             headers: {
               "Content-Type":
                 "application/json",
             },
-
             body: JSON.stringify(body),
           });
 
@@ -835,12 +826,10 @@ export default function EditProfileForm({
           `${API_BASE_URL}/api/profile/${user.id}`,
           {
             method: "PUT",
-
             headers: {
               "Content-Type":
                 "application/json",
             },
-
             body: JSON.stringify({
               fullname:
                 fullname.trim(),
@@ -909,10 +898,6 @@ export default function EditProfileForm({
               refreshedData?.profile ||
               refreshedData;
 
-            // ------------------------------------------
-            // Reload clean skills
-            // ------------------------------------------
-
             const refreshedSkills =
               normalizeSkills(
                 refreshedProfile?.skills
@@ -926,10 +911,6 @@ export default function EditProfileForm({
             setSkills(
               refreshedSkills
             );
-
-            // ------------------------------------------
-            // Reload resume
-            // ------------------------------------------
 
             setExistingResumeUrl(
               getResumeUrl(
@@ -991,9 +972,7 @@ export default function EditProfileForm({
 
       <div className="mb-7">
         <div className="flex items-center gap-3">
-
           <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100">
-
             {isFreelancer ? (
               <BriefcaseBusiness
                 size={21}
@@ -1005,7 +984,6 @@ export default function EditProfileForm({
                 className="text-emerald-600"
               />
             )}
-
           </div>
 
           <div>
@@ -1019,7 +997,6 @@ export default function EditProfileForm({
                 : "Update your client and organization information."}
             </p>
           </div>
-
         </div>
       </div>
 
@@ -1038,7 +1015,6 @@ export default function EditProfileForm({
         ================================================== */}
 
         <div>
-
           <div className="mb-4 flex items-center gap-2">
             <User
               size={18}
@@ -1100,7 +1076,6 @@ export default function EditProfileForm({
                 Email cannot be changed here.
               </p>
             </div>
-
           </div>
         </div>
 
@@ -1112,7 +1087,6 @@ export default function EditProfileForm({
           <div className="border-t border-gray-100 pt-7">
 
             <div className="mb-4 flex items-center gap-2">
-
               <BriefcaseBusiness
                 size={18}
                 className="text-emerald-600"
@@ -1121,7 +1095,6 @@ export default function EditProfileForm({
               <h3 className="text-base font-bold text-gray-800">
                 Professional Information
               </h3>
-
             </div>
 
             <div className="grid gap-5 md:grid-cols-2">
@@ -1178,12 +1151,9 @@ export default function EditProfileForm({
                 />
               </div>
 
-              {/* ==================================================
-                  SKILLS
-              ================================================== */}
+              {/* SKILLS */}
 
               <div className="md:col-span-2">
-
                 <label
                   htmlFor="skills"
                   className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700"
@@ -1198,20 +1168,14 @@ export default function EditProfileForm({
 
                 <div className="rounded-xl border border-gray-300 bg-white p-3 transition focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-100">
 
-                  {/* ==================================================
-                      SKILL TAGS
-                  ================================================== */}
-
                   {skills.length > 0 && (
                     <div className="mb-2 flex flex-wrap gap-2">
-
                       {skills.map(
                         (skill, index) => (
                           <span
                             key={`${skill}-${index}`}
                             className="inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-700"
                           >
-
                             <span>
                               {skill}
                             </span>
@@ -1228,17 +1192,11 @@ export default function EditProfileForm({
                             >
                               <X size={13} />
                             </button>
-
                           </span>
                         )
                       )}
-
                     </div>
                   )}
-
-                  {/* ==================================================
-                      SKILL INPUT
-                  ================================================== */}
 
                   <input
                     id="skills"
@@ -1268,11 +1226,9 @@ export default function EditProfileForm({
                     }
                     className="w-full border-none bg-transparent px-1 py-2 text-sm text-gray-700 outline-none placeholder:text-gray-400 sm:text-base"
                   />
-
                 </div>
 
                 <div className="mt-2 flex items-center justify-between">
-
                   <p className="text-xs text-gray-400">
                     Press Enter or comma to add each skill.
                   </p>
@@ -1285,19 +1241,13 @@ export default function EditProfileForm({
                         : "skills"}
                     </p>
                   )}
-
                 </div>
-
               </div>
-
             </div>
 
-            {/* ==================================================
-                RESUME
-            ================================================== */}
+            {/* RESUME */}
 
             <div className="mt-6">
-
               <label
                 htmlFor="resume"
                 className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700"
@@ -1316,7 +1266,6 @@ export default function EditProfileForm({
                   htmlFor="resume"
                   className="flex cursor-pointer flex-col items-center justify-center rounded-lg border border-gray-200 bg-white px-5 py-7 text-center transition hover:border-emerald-300 hover:bg-emerald-50/30"
                 >
-
                   <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
                     <Upload size={22} />
                   </div>
@@ -1338,14 +1287,12 @@ export default function EditProfileForm({
                     }
                     className="hidden"
                   />
-
                 </label>
 
                 {/* NEW RESUME */}
 
                 {resumeFile && (
                   <div className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
-
                     <div className="flex min-w-0 items-center gap-3">
 
                       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-emerald-600">
@@ -1353,7 +1300,6 @@ export default function EditProfileForm({
                       </div>
 
                       <div className="min-w-0">
-
                         <p className="truncate text-sm font-semibold text-emerald-700">
                           {resumeFile.name}
                         </p>
@@ -1361,9 +1307,7 @@ export default function EditProfileForm({
                         <p className="text-xs text-emerald-600">
                           New resume selected
                         </p>
-
                       </div>
-
                     </div>
 
                     <button
@@ -1375,7 +1319,6 @@ export default function EditProfileForm({
                     >
                       <X size={17} />
                     </button>
-
                   </div>
                 )}
 
@@ -1384,17 +1327,14 @@ export default function EditProfileForm({
                 {!resumeFile &&
                   existingResumeUrl && (
                     <div className="mt-4 rounded-lg border border-gray-200 bg-white p-4">
-
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 
                         <div className="flex min-w-0 items-center gap-3">
-
                           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-50 text-red-500">
                             <FileText size={19} />
                           </div>
 
                           <div className="min-w-0">
-
                             <p className="text-sm font-semibold text-gray-700">
                               Current Resume
                             </p>
@@ -1402,9 +1342,7 @@ export default function EditProfileForm({
                             <p className="truncate text-xs text-gray-400">
                               Existing PDF resume
                             </p>
-
                           </div>
-
                         </div>
 
                         <a
@@ -1416,20 +1354,15 @@ export default function EditProfileForm({
                           <ExternalLink size={14} />
                           View Resume
                         </a>
-
                       </div>
-
                     </div>
                   )}
-
               </div>
 
               <p className="mt-2 text-xs text-gray-400">
                 Upload a new PDF to replace your current resume.
               </p>
-
             </div>
-
           </div>
         )}
 
@@ -1441,7 +1374,6 @@ export default function EditProfileForm({
           <div className="border-t border-gray-100 pt-7">
 
             <div className="mb-4 flex items-center gap-2">
-
               <Building2
                 size={18}
                 className="text-emerald-600"
@@ -1450,7 +1382,6 @@ export default function EditProfileForm({
               <h3 className="text-base font-bold text-gray-800">
                 Organization Information
               </h3>
-
             </div>
 
             <div className="grid gap-5 md:grid-cols-2">
@@ -1506,9 +1437,7 @@ export default function EditProfileForm({
                   className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm text-gray-700 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 sm:text-base"
                 />
               </div>
-
             </div>
-
           </div>
         )}
 
@@ -1519,7 +1448,6 @@ export default function EditProfileForm({
         <div className="border-t border-gray-100 pt-7">
 
           <div className="mb-4 flex items-center gap-2">
-
             <MapPin
               size={18}
               className="text-emerald-600"
@@ -1528,7 +1456,6 @@ export default function EditProfileForm({
             <h3 className="text-base font-bold text-gray-800">
               Profile Details
             </h3>
-
           </div>
 
           <div className="space-y-5">
@@ -1536,7 +1463,6 @@ export default function EditProfileForm({
             {/* CITY */}
 
             <div>
-
               <label
                 htmlFor="city"
                 className="mb-2 block text-sm font-medium text-gray-700"
@@ -1558,25 +1484,21 @@ export default function EditProfileForm({
                 placeholder="Enter your city"
                 className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm text-gray-700 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 sm:text-base"
               />
-
             </div>
 
             {/* ABOUT */}
 
             <div>
-
               <label
                 htmlFor="about"
                 className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700"
               >
-
                 <FileText
                   size={16}
                   className="text-emerald-600"
                 />
 
                 About
-
               </label>
 
               <textarea
@@ -1597,11 +1519,8 @@ export default function EditProfileForm({
                 rows={5}
                 className="w-full resize-y rounded-xl border border-gray-300 px-4 py-3 text-sm leading-6 text-gray-700 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 sm:text-base"
               />
-
             </div>
-
           </div>
-
         </div>
 
         {/* ==================================================
@@ -1611,7 +1530,6 @@ export default function EditProfileForm({
         <div className="border-t border-gray-100 pt-7">
 
           <div className="mb-4 flex items-center gap-2">
-
             <LinkIcon
               size={18}
               className="text-emerald-600"
@@ -1620,7 +1538,6 @@ export default function EditProfileForm({
             <h3 className="text-base font-bold text-gray-800">
               Professional Links
             </h3>
-
           </div>
 
           <div className="grid gap-5 md:grid-cols-2">
@@ -1628,7 +1545,6 @@ export default function EditProfileForm({
             {/* LINKEDIN */}
 
             <div>
-
               <label
                 htmlFor="linkedinUrl"
                 className="mb-2 block text-sm font-medium text-gray-700"
@@ -1650,14 +1566,12 @@ export default function EditProfileForm({
                 placeholder="https://linkedin.com/in/yourname"
                 className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm text-gray-700 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 sm:text-base"
               />
-
             </div>
 
             {/* GITHUB */}
 
             {isFreelancer && (
               <div>
-
                 <label
                   htmlFor="githubUrl"
                   className="mb-2 block text-sm font-medium text-gray-700"
@@ -1679,7 +1593,6 @@ export default function EditProfileForm({
                   placeholder="https://github.com/username"
                   className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm text-gray-700 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 sm:text-base"
                 />
-
               </div>
             )}
 
@@ -1687,12 +1600,10 @@ export default function EditProfileForm({
 
             {isClient && (
               <div>
-
                 <label
                   htmlFor="companyWebsite"
                   className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700"
                 >
-
                   <Globe
                     size={16}
                     className="text-emerald-600"
@@ -1703,7 +1614,6 @@ export default function EditProfileForm({
                   <span className="text-xs font-normal text-gray-400">
                     (Optional)
                   </span>
-
                 </label>
 
                 <input
@@ -1720,12 +1630,9 @@ export default function EditProfileForm({
                   placeholder="https://yourcompany.com"
                   className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm text-gray-700 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 sm:text-base"
                 />
-
               </div>
             )}
-
           </div>
-
         </div>
 
         {/* ==================================================
@@ -1735,9 +1642,7 @@ export default function EditProfileForm({
         {message && (
           <div
             className={`rounded-xl border p-4 text-sm font-medium ${
-              message.includes(
-                "successfully"
-              )
+              message.includes("successfully")
                 ? "border-emerald-200 bg-emerald-50 text-emerald-700"
                 : "border-red-200 bg-red-50 text-red-600"
             }`}
@@ -1757,7 +1662,6 @@ export default function EditProfileForm({
             disabled={loading}
             className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-6 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:text-base"
           >
-
             {loading ? (
               <>
                 <Loader2
@@ -1774,11 +1678,8 @@ export default function EditProfileForm({
                 Save Changes
               </>
             )}
-
           </button>
-
         </div>
-
       </form>
     </div>
   );

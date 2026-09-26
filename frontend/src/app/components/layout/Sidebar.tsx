@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   LayoutDashboard,
@@ -19,6 +19,7 @@ import {
   MessageCircle,
   ListChecks,
   Star,
+  ShieldCheck,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -41,23 +42,23 @@ export default function Sidebar({ role }: SidebarProps) {
   // GET LOGGED-IN USER
   // =========================================
 
-  let user: LoggedInUser = {
+  const [user, setUser] = useState<LoggedInUser>({
     fullname: "Guest",
     role: "",
     email: "",
-  };
+  });
 
-  if (typeof window !== "undefined") {
+  useEffect(() => {
     const storedUser = localStorage.getItem("user");
 
     if (storedUser) {
       try {
-        user = JSON.parse(storedUser);
+        setUser(JSON.parse(storedUser));
       } catch (error) {
         console.error("Invalid user data:", error);
       }
     }
-  }
+  }, []);
 
   // =========================================
   // ADMIN MENU
@@ -78,6 +79,11 @@ export default function Sidebar({ role }: SidebarProps) {
       title: "Manage Users",
       icon: Users,
       href: "#",
+    },
+    {
+      title: "User Verification",
+      icon: ShieldCheck,
+      href: "/admin/verification",
     },
     {
       title: "Reports",
@@ -127,10 +133,10 @@ export default function Sidebar({ role }: SidebarProps) {
       href: "/freelancer/milestones",
     },
     {
-  title: "Ratings & Reviews",
-  icon: Star,
-  href: "/freelancer/reviews",
-},
+      title: "Ratings & Reviews",
+      icon: Star,
+      href: "/freelancer/reviews",
+    },
     {
       title: "Messages",
       icon: MessageCircle,
@@ -168,7 +174,6 @@ export default function Sidebar({ role }: SidebarProps) {
       icon: FileSignature,
       href: "/client/contracts",
     },
-    
     {
       title: "Milestones",
       icon: ListChecks,
@@ -179,7 +184,6 @@ export default function Sidebar({ role }: SidebarProps) {
       icon: Star,
       href: "/client/reviews",
     },
-    
     {
       title: "Messages",
       icon: MessageCircle,

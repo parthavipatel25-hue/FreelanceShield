@@ -79,6 +79,30 @@ const createProject = async (req, res) => {
     }
 
     // ============================================
+    // CHECK CLIENT VERIFICATION
+    // ============================================
+
+    const verificationResult = await pool.query(
+      `
+      SELECT status
+      FROM user_verifications
+      WHERE user_id = $1
+      `,
+      [user_id]
+    );
+
+    if (
+      verificationResult.rows.length === 0 ||
+      verificationResult.rows[0].status !== "approved"
+    ) {
+      return res.status(403).json({
+        success: false,
+        message:
+          "Your profile must be verified before you can create projects.",
+      });
+    }
+
+    // ============================================
     // CLIENT PROFILE ID
     // ============================================
 
@@ -156,20 +180,12 @@ const getClientProjects = async (req, res) => {
   try {
     const { user_id } = req.params;
 
-    // ============================================
-    // CHECK USER ID
-    // ============================================
-
     if (!user_id) {
       return res.status(400).json({
         success: false,
         message: "User ID is required.",
       });
     }
-
-    // ============================================
-    // CHECK CLIENT PROFILE
-    // ============================================
 
     const clientResult = await pool.query(
       `
@@ -188,10 +204,6 @@ const getClientProjects = async (req, res) => {
     }
 
     const client_id = clientResult.rows[0].id;
-
-    // ============================================
-    // GET PROJECTS
-    // ============================================
 
     const result = await pool.query(
       `
@@ -225,10 +237,6 @@ const getClientProjects = async (req, res) => {
 const getProjectById = async (req, res) => {
   try {
     const { id } = req.params;
-
-    // ============================================
-    // GET PROJECT
-    // ============================================
 
     const result = await pool.query(
       `
@@ -283,10 +291,6 @@ const updateProject = async (req, res) => {
       deadline,
     } = req.body;
 
-    // ============================================
-    // REQUIRED FIELDS
-    // ============================================
-
     if (
       !title ||
       !description ||
@@ -300,10 +304,6 @@ const updateProject = async (req, res) => {
         message: "Please fill all required fields.",
       });
     }
-
-    // ============================================
-    // CHECK PROJECT
-    // ============================================
 
     const existingProject = await pool.query(
       `
@@ -321,17 +321,9 @@ const updateProject = async (req, res) => {
       });
     }
 
-    // ============================================
-    // SKILLS
-    // ============================================
-
     const projectSkills = Array.isArray(skills)
       ? skills.join(", ")
       : skills?.trim() || null;
-
-    // ============================================
-    // UPDATE PROJECT
-    // ============================================
 
     const result = await pool.query(
       `
@@ -378,12 +370,6 @@ const updateProject = async (req, res) => {
 
 // ============================================
 // UPDATE PROJECT PROGRESS
-// Week 8 - Project Tracking
-// ============================================
-
-// ============================================
-// UPDATE PROJECT PROGRESS
-// Week 8 - Project Tracking
 // ============================================
 
 const updateProjectProgress = async (req, res) => {
@@ -392,10 +378,6 @@ const updateProjectProgress = async (req, res) => {
   try {
     const { id } = req.params;
     const { progress, freelancer_id } = req.body;
-
-    // ============================================
-    // REQUIRED FIELDS
-    // ============================================
 
     if (!id) {
       return res.status(400).json({
@@ -418,10 +400,6 @@ const updateProjectProgress = async (req, res) => {
       });
     }
 
-    // ============================================
-    // VALIDATE PROGRESS
-    // ============================================
-
     const progressValue = Number(progress);
 
     if (
@@ -436,15 +414,7 @@ const updateProjectProgress = async (req, res) => {
       });
     }
 
-    // ============================================
-    // START TRANSACTION
-    // ============================================
-
     await client.query("BEGIN");
-
-    // ============================================
-    // GET PROJECT + CLIENT USER
-    // ============================================
 
     const projectResult = await client.query(
       `
@@ -477,10 +447,6 @@ const updateProjectProgress = async (req, res) => {
 
     const project = projectResult.rows[0];
 
-    // ============================================
-    // CHECK ASSIGNED FREELANCER
-    // ============================================
-
     if (!project.freelancer_id) {
       await client.query("ROLLBACK");
 
@@ -490,10 +456,6 @@ const updateProjectProgress = async (req, res) => {
           "No freelancer has been assigned to this project.",
       });
     }
-
-    // ============================================
-    // CHECK FREELANCER AUTHORIZATION
-    // ============================================
 
     if (
       Number(project.freelancer_id) !==
@@ -508,10 +470,6 @@ const updateProjectProgress = async (req, res) => {
       });
     }
 
-    // ============================================
-    // CHECK PROJECT STATUS
-    // ============================================
-
     if (
       !project.status ||
       project.status.toLowerCase() !== "in_progress"
@@ -524,10 +482,6 @@ const updateProjectProgress = async (req, res) => {
           "Progress can only be updated for projects that are in progress.",
       });
     }
-
-    // ============================================
-    // GET PROJECT MILESTONES
-    // ============================================
 
     const milestonesResult = await client.query(
       `
@@ -545,10 +499,6 @@ const updateProjectProgress = async (req, res) => {
 
     const milestones = milestonesResult.rows;
 
-    // ============================================
-    // UPDATE PROJECT PROGRESS
-    // ============================================
-
     const updatedProject = await client.query(
       `
       UPDATE projects
@@ -558,38 +508,11 @@ const updateProjectProgress = async (req, res) => {
       WHERE id = $2
       RETURNING *
       `,
-      [
-        progressValue,
-        id,
-      ]
+      [progressValue, id]
     );
-
-    // ============================================
-    // SYNCHRONIZE MILESTONES
-    // ============================================
-    //
-    // Example:
-    //
-    // Project = 70%
-    //
-    // 3 milestones:
-    //
-    // Milestone 1 = 100%
-    // Milestone 2 = 100%
-    // Milestone 3 = 10%
-    //
-    // Average:
-    //
-    // (100 + 100 + 10) / 3 = 70%
-    //
-    // ============================================
 
     if (milestones.length > 0) {
       const totalMilestones = milestones.length;
-
-      // ============================================
-      // Calculate base progress
-      // ============================================
 
       const baseProgress = Math.floor(
         progressValue / totalMilestones
@@ -599,12 +522,6 @@ const updateProjectProgress = async (req, res) => {
         progressValue -
         baseProgress * totalMilestones;
 
-      // ============================================
-      // Assign progress to milestones
-      //
-      // Earlier milestones are completed first.
-      // ============================================
-
       for (let i = 0; i < totalMilestones; i++) {
         let milestoneProgress = baseProgress;
 
@@ -612,10 +529,6 @@ const updateProjectProgress = async (req, res) => {
           milestoneProgress += 1;
           remainder -= 1;
         }
-
-        // ==========================================
-        // MILESTONE STATUS
-        // ==========================================
 
         let milestoneStatus = "in_progress";
 
@@ -626,10 +539,6 @@ const updateProjectProgress = async (req, res) => {
         if (milestoneProgress === 100) {
           milestoneStatus = "completed";
         }
-
-        // ==========================================
-        // UPDATE MILESTONE
-        // ==========================================
 
         await client.query(
           `
@@ -648,10 +557,6 @@ const updateProjectProgress = async (req, res) => {
         );
       }
     }
-
-    // ============================================
-    // NOTIFY CLIENT
-    // ============================================
 
     await client.query(
       `
@@ -673,32 +578,17 @@ const updateProjectProgress = async (req, res) => {
       ]
     );
 
-    // ============================================
-    // COMMIT TRANSACTION
-    // ============================================
-
     await client.query("COMMIT");
-
-    // ============================================
-    // RESPONSE
-    // ============================================
 
     return res.status(200).json({
       success: true,
       message:
         "Project progress and milestones synchronized successfully.",
-
       project: updatedProject.rows[0],
-
       milestones_updated: milestones.length,
-
       project_progress: progressValue,
     });
   } catch (error) {
-    // ============================================
-    // ROLLBACK
-    // ============================================
-
     try {
       await client.query("ROLLBACK");
     } catch (rollbackError) {
@@ -725,7 +615,6 @@ const updateProjectProgress = async (req, res) => {
 
 // ============================================
 // COMPLETE PROJECT
-// Week 8 - Project Completion
 // ============================================
 
 const completeProject = async (req, res) => {
@@ -734,10 +623,6 @@ const completeProject = async (req, res) => {
   try {
     const { id } = req.params;
     const { freelancer_id } = req.body;
-
-    // ============================================
-    // REQUIRED FIELDS
-    // ============================================
 
     if (!id) {
       return res.status(400).json({
@@ -753,15 +638,7 @@ const completeProject = async (req, res) => {
       });
     }
 
-    // ============================================
-    // START TRANSACTION
-    // ============================================
-
     await client.query("BEGIN");
-
-    // ============================================
-    // GET PROJECT
-    // ============================================
 
     const projectResult = await client.query(
       `
@@ -793,10 +670,6 @@ const completeProject = async (req, res) => {
 
     const project = projectResult.rows[0];
 
-    // ============================================
-    // CHECK ASSIGNED FREELANCER
-    // ============================================
-
     if (!project.freelancer_id) {
       await client.query("ROLLBACK");
 
@@ -806,10 +679,6 @@ const completeProject = async (req, res) => {
           "No freelancer has been assigned to this project.",
       });
     }
-
-    // ============================================
-    // CHECK FREELANCER AUTHORIZATION
-    // ============================================
 
     if (
       Number(project.freelancer_id) !==
@@ -824,10 +693,6 @@ const completeProject = async (req, res) => {
       });
     }
 
-    // ============================================
-    // CHECK PROJECT STATUS
-    // ============================================
-
     if (project.status !== "in_progress") {
       await client.query("ROLLBACK");
 
@@ -838,10 +703,6 @@ const completeProject = async (req, res) => {
       });
     }
 
-    // ============================================
-    // CHECK PROJECT PROGRESS
-    // ============================================
-
     if (Number(project.progress) < 100) {
       await client.query("ROLLBACK");
 
@@ -851,10 +712,6 @@ const completeProject = async (req, res) => {
           "Project progress must reach 100% before completing the project.",
       });
     }
-
-    // ============================================
-    // UPDATE PROJECT
-    // ============================================
 
     const updatedProject = await client.query(
       `
@@ -869,10 +726,6 @@ const completeProject = async (req, res) => {
       [id]
     );
 
-    // ============================================
-    // COMPLETE RELATED CONTRACT
-    // ============================================
-
     const updatedContract = await client.query(
       `
       UPDATE contracts
@@ -885,10 +738,6 @@ const completeProject = async (req, res) => {
       `,
       [id]
     );
-
-    // ============================================
-    // CREATE NOTIFICATION FOR CLIENT
-    // ============================================
 
     await client.query(
       `
@@ -910,15 +759,7 @@ const completeProject = async (req, res) => {
       ]
     );
 
-    // ============================================
-    // COMMIT TRANSACTION
-    // ============================================
-
     await client.query("COMMIT");
-
-    // ============================================
-    // RESPONSE
-    // ============================================
 
     return res.status(200).json({
       success: true,
@@ -961,10 +802,6 @@ const deleteProject = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // ============================================
-    // CHECK PROJECT
-    // ============================================
-
     const existingProject = await pool.query(
       `
       SELECT id
@@ -980,10 +817,6 @@ const deleteProject = async (req, res) => {
         message: "Project not found.",
       });
     }
-
-    // ============================================
-    // DELETE PROJECT
-    // ============================================
 
     await pool.query(
       `
@@ -1043,8 +876,8 @@ const getAllProjects = async (req, res) => {
 
 // ============================================
 // SEARCH & FILTER PROJECTS
-// Week 10 - Search & Filters
 // ============================================
+
 const searchProjects = async (req, res) => {
   try {
     const {
@@ -1058,65 +891,37 @@ const searchProjects = async (req, res) => {
     let query = `
       SELECT
         p.*,
-
         cp.user_id AS client_user_id,
         cp.fullname AS client_name,
-
         u.fullname AS client_user_name,
         u.email AS client_email
-
       FROM projects p
-
       JOIN client_profiles cp
         ON p.client_id = cp.id
-
       JOIN users u
         ON cp.user_id = u.id
-
       WHERE p.status = 'open'
     `;
 
     const values = [];
     let parameterIndex = 1;
 
-    // ==========================================
-    // SEARCH
-    // ==========================================
-
     if (search && search.trim() !== "") {
       query += `
         AND (
-          LOWER(p.title)
-            LIKE LOWER($${parameterIndex})
-
-          OR LOWER(p.description)
-            LIKE LOWER($${parameterIndex})
-
-          OR LOWER(p.category)
-            LIKE LOWER($${parameterIndex})
-
-          OR LOWER(COALESCE(p.skills, ''))
-            LIKE LOWER($${parameterIndex})
-
-          OR LOWER(COALESCE(cp.fullname, ''))
-            LIKE LOWER($${parameterIndex})
-
-          OR LOWER(COALESCE(u.fullname, ''))
-            LIKE LOWER($${parameterIndex})
-
-          OR LOWER(COALESCE(u.email, ''))
-            LIKE LOWER($${parameterIndex})
+          LOWER(p.title) LIKE LOWER($${parameterIndex})
+          OR LOWER(p.description) LIKE LOWER($${parameterIndex})
+          OR LOWER(p.category) LIKE LOWER($${parameterIndex})
+          OR LOWER(COALESCE(p.skills, '')) LIKE LOWER($${parameterIndex})
+          OR LOWER(COALESCE(cp.fullname, '')) LIKE LOWER($${parameterIndex})
+          OR LOWER(COALESCE(u.fullname, '')) LIKE LOWER($${parameterIndex})
+          OR LOWER(COALESCE(u.email, '')) LIKE LOWER($${parameterIndex})
         )
       `;
 
       values.push(`%${search.trim()}%`);
-
       parameterIndex++;
     }
-
-    // ==========================================
-    // CATEGORY
-    // ==========================================
 
     if (category && category.trim() !== "") {
       query += `
@@ -1125,13 +930,8 @@ const searchProjects = async (req, res) => {
       `;
 
       values.push(category.trim());
-
       parameterIndex++;
     }
-
-    // ==========================================
-    // SKILLS
-    // ==========================================
 
     if (skills && skills.trim() !== "") {
       query += `
@@ -1140,13 +940,8 @@ const searchProjects = async (req, res) => {
       `;
 
       values.push(`%${skills.trim()}%`);
-
       parameterIndex++;
     }
-
-    // ==========================================
-    // BUDGET TYPE
-    // ==========================================
 
     if (budget_type && budget_type.trim() !== "") {
       query += `
@@ -1154,13 +949,8 @@ const searchProjects = async (req, res) => {
       `;
 
       values.push(budget_type.trim());
-
       parameterIndex++;
     }
-
-    // ==========================================
-    // LOCATION
-    // ==========================================
 
     if (location && location.trim() !== "") {
       query += `
@@ -1169,30 +959,17 @@ const searchProjects = async (req, res) => {
       `;
 
       values.push(`%${location.trim()}%`);
-
       parameterIndex++;
     }
-
-    // ==========================================
-    // ORDER
-    // ==========================================
 
     query += `
       ORDER BY p.id DESC
     `;
 
-    // ==========================================
-    // DATABASE QUERY
-    // ==========================================
-
     const result = await pool.query(
       query,
       values
     );
-
-    // ==========================================
-    // RESPONSE
-    // ==========================================
 
     return res.status(200).json({
       success: true,

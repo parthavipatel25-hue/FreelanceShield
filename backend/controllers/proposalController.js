@@ -63,6 +63,30 @@ const createProposal = async (req, res) => {
       });
     }
 
+    // ============================================
+    // CHECK FREELANCER VERIFICATION
+    // ============================================
+
+    const verificationResult = await pool.query(
+      `
+      SELECT status
+      FROM user_verifications
+      WHERE user_id = $1
+      `,
+      [freelancer_id]
+    );
+
+    if (
+      verificationResult.rows.length === 0 ||
+      verificationResult.rows[0].status !== "approved"
+    ) {
+      return res.status(403).json({
+        success: false,
+        message:
+          "Your profile must be verified before you can submit proposals.",
+      });
+    }
+
     const freelancerName =
       freelancerResult.rows[0].fullname || "A freelancer";
 
@@ -730,7 +754,7 @@ const rejectProposal = async (req, res) => {
 };
 
 // ============================================
-// EXPORT
+// EXPORTS
 // ============================================
 
 module.exports = {

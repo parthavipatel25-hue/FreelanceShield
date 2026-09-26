@@ -20,6 +20,7 @@ import {
   Code2,
   ExternalLink,
   FileText,
+  ShieldCheck,
 } from "lucide-react";
 
 // ==================================================
@@ -46,7 +47,6 @@ export interface User {
 interface ProfileData {
   id?: number;
   user_id?: number;
-
   profile_picture?: string | null;
 
   // Freelancer
@@ -55,7 +55,6 @@ interface ProfileData {
   city?: string | null;
   skills?: string | string[] | null;
   about?: string | null;
-
   linkedin_url?: string | null;
   github_url?: string | null;
   google_drive_url?: string | null;
@@ -67,9 +66,18 @@ interface ProfileData {
   industry?: string | null;
   requirements?: string | string[] | null;
   company_website?: string | null;
-
   profile_exists?: boolean;
 }
+
+// ==================================================
+// VERIFICATION STATUS TYPE
+// ==================================================
+
+type VerificationStatus =
+  | "not_submitted"
+  | "pending"
+  | "approved"
+  | "rejected";
 
 // ==================================================
 // PROFILE PAGE
@@ -78,8 +86,7 @@ interface ProfileData {
 export default function ProfilePage() {
   const router = useRouter();
 
-  const [user, setUser] =
-    useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(null);
 
   const [profile, setProfile] =
     useState<ProfileData | null>(null);
@@ -88,12 +95,27 @@ export default function ProfilePage() {
     useState(true);
 
   // ==================================================
+  // VERIFICATION STATE
+  // ==================================================
+
+  const [verificationStatus, setVerificationStatus] =
+    useState<VerificationStatus>("not_submitted");
+
+  const [rejectionReason, setRejectionReason] =
+    useState("");
+
+  const [verificationLoading, setVerificationLoading] =
+    useState(true);
+
+  const [verificationSubmitting, setVerificationSubmitting] =
+    useState(false);
+
+  // ==================================================
   // LOAD LOGGED-IN USER
   // ==================================================
 
   useEffect(() => {
-    const storedUser =
-      localStorage.getItem("user");
+    const storedUser = localStorage.getItem("user");
 
     if (!storedUser) {
       router.replace("/login");
@@ -111,29 +133,21 @@ export default function ProfilePage() {
         !loggedInUser.email ||
         !loggedInUser.role
       ) {
-        throw new Error(
-          "Invalid user data"
-        );
+        throw new Error("Invalid user data");
       }
 
       if (
         loggedInUser.role !== "freelancer" &&
         loggedInUser.role !== "client"
       ) {
-        throw new Error(
-          "Invalid user role"
-        );
+        throw new Error("Invalid user role");
       }
 
       setUser(loggedInUser);
     } catch (error) {
-      console.error(
-        "Invalid user data:",
-        error
-      );
+      console.error("Invalid user data:", error);
 
       localStorage.removeItem("user");
-
       router.replace("/login");
     }
   }, [router]);
@@ -154,21 +168,13 @@ export default function ProfilePage() {
             ? `${BACKEND_URL}/api/freelancer-profile/${user.id}`
             : `${BACKEND_URL}/api/client-profile/${user.id}`;
 
-        console.log(
-          "PROFILE API:",
-          endpoint
-        );
+        console.log("PROFILE API:", endpoint);
 
-        const response =
-          await fetch(endpoint);
+        const response = await fetch(endpoint);
 
-        const data =
-          await response.json();
+        const data = await response.json();
 
-        console.log(
-          "PROFILE RESPONSE:",
-          data
-        );
+        console.log("PROFILE RESPONSE:", data);
 
         if (!response.ok) {
           setProfile(null);
@@ -200,6 +206,118 @@ export default function ProfilePage() {
 
     loadProfile();
   }, [user]);
+
+  // ==================================================
+  // LOAD VERIFICATION STATUS
+  // ==================================================
+
+  useEffect(() => {
+    if (!user) return;
+
+    const loadVerificationStatus = async () => {
+      try {
+        setVerificationLoading(true);
+
+        const response = await fetch(
+          `${BACKEND_URL}/api/user-verification/status/${user.id}`
+        );
+
+        const data = await response.json();
+
+        console.log(
+          "VERIFICATION STATUS:",
+          data
+        );
+
+        if (!response.ok) {
+          setVerificationStatus("not_submitted");
+          setRejectionReason("");
+          return;
+        }
+
+        setVerificationStatus(
+          data?.status || "not_submitted"
+        );
+
+        setRejectionReason(
+          data?.rejection_reason || ""
+        );
+      } catch (error) {
+        console.error(
+          "VERIFICATION STATUS ERROR:",
+          error
+        );
+
+        setVerificationStatus("not_submitted");
+        setRejectionReason("");
+      } finally {
+        setVerificationLoading(false);
+      }
+    };
+
+    loadVerificationStatus();
+  }, [user]);
+
+  // ==================================================
+  // SUBMIT VERIFICATION REQUEST
+  // ==================================================
+
+  const submitVerificationRequest = async () => {
+    if (!user) return;
+
+    try {
+      setVerificationSubmitting(true);
+
+      const response = await fetch(
+        `${BACKEND_URL}/api/user-verification/request`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            user_id: user.id,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      console.log(
+        "VERIFICATION REQUEST RESPONSE:",
+        data
+      );
+
+      if (!response.ok) {
+        alert(
+          data?.message ||
+            "Unable to submit verification request."
+        );
+        return;
+      }
+
+      setVerificationStatus(
+        data?.status || "pending"
+      );
+
+      setRejectionReason("");
+
+      alert(
+        "Your verification request has been submitted successfully."
+      );
+    } catch (error) {
+      console.error(
+        "VERIFICATION REQUEST ERROR:",
+        error
+      );
+
+      alert(
+        "Unable to connect to the server. Please try again."
+      );
+    } finally {
+      setVerificationSubmitting(false);
+    }
+  };
 
   // ==================================================
   // LOADING
@@ -260,62 +378,54 @@ export default function ProfilePage() {
   // SKILLS
   // ==================================================
 
- // ==================================================
-// SKILLS
-// ==================================================
+  const parseList = (
+    value: string | string[] | null | undefined
+  ): string[] => {
+    if (!value) return [];
 
-const parseList = (
-  value: string | string[] | null | undefined
-): string[] => {
-  if (!value) return [];
-
-  // Already an array
-  if (Array.isArray(value)) {
-    return value
-      .map((item) => String(item).trim())
-      .filter(Boolean);
-  }
-
-  const trimmedValue = value.trim();
-
-  if (!trimmedValue) return [];
-
-  // Backend JSON string:
-  // ["React","Next.js","Node.js"]
-  try {
-    const parsed = JSON.parse(trimmedValue);
-
-    if (Array.isArray(parsed)) {
-      return parsed
+    if (Array.isArray(value)) {
+      return value
         .map((item) => String(item).trim())
         .filter(Boolean);
     }
-  } catch {
-    // Not JSON, continue with comma-separated parsing
-  }
 
-  // Normal comma-separated string:
-  // React, Next.js, Node.js
-  return trimmedValue
-    .split(",")
-    .map((item) =>
-      item
-        .trim()
-        .replace(/^["']|["']$/g, "")
-    )
-    .filter(Boolean);
-};
+    const trimmedValue = value.trim();
 
-const skills = parseList(profile?.skills);
+    if (!trimmedValue) return [];
+
+    try {
+      const parsed =
+        JSON.parse(trimmedValue);
+
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map((item) => String(item).trim())
+          .filter(Boolean);
+      }
+    } catch {
+      // Not JSON, continue with comma-separated parsing
+    }
+
+    return trimmedValue
+      .split(",")
+      .map((item) =>
+        item
+          .trim()
+          .replace(/^["']|["']$/g, "")
+      )
+      .filter(Boolean);
+  };
+
+  const skills = parseList(
+    profile?.skills
+  );
 
   // ==================================================
   // REQUIREMENTS
   // ==================================================
 
   const requirements: string[] =
-    Array.isArray(
-      profile?.requirements
-    )
+    Array.isArray(profile?.requirements)
       ? profile.requirements
       : typeof profile?.requirements ===
           "string"
@@ -355,7 +465,6 @@ const skills = parseList(profile?.skills);
   ) => {
     if (!filePath) return "";
 
-    // Already a complete URL
     if (
       filePath.startsWith("http://") ||
       filePath.startsWith("https://")
@@ -363,8 +472,11 @@ const skills = parseList(profile?.skills);
       return filePath;
     }
 
-    // Backend file
-    return `${BACKEND_URL}${filePath.startsWith("/") ? "" : "/"}${filePath}`;
+    return `${BACKEND_URL}${
+      filePath.startsWith("/")
+        ? ""
+        : "/"
+    }${filePath}`;
   };
 
   const profilePictureUrl =
@@ -476,13 +588,16 @@ const skills = parseList(profile?.skills);
             <div className="hidden items-center gap-3 rounded-2xl bg-white/10 px-4 py-3 backdrop-blur-sm sm:flex">
 
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15">
+
                 <LockKeyhole
                   size={20}
                   className="text-white"
                 />
+
               </div>
 
               <div>
+
                 <p className="text-xs text-emerald-100">
                   Account Status
                 </p>
@@ -490,6 +605,7 @@ const skills = parseList(profile?.skills);
                 <p className="text-sm font-semibold text-white">
                   Active
                 </p>
+
               </div>
 
             </div>
@@ -506,13 +622,16 @@ const skills = parseList(profile?.skills);
           <div className="mb-4 flex items-center gap-3">
 
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100">
+
               <UserRound
                 size={20}
                 className="text-emerald-600"
               />
+
             </div>
 
             <div>
+
               <h2 className="text-lg font-bold text-gray-900 sm:text-xl">
                 Profile Information
               </h2>
@@ -520,6 +639,7 @@ const skills = parseList(profile?.skills);
               <p className="text-sm text-gray-500">
                 Details added to your profile
               </p>
+
             </div>
 
           </div>
@@ -527,9 +647,11 @@ const skills = parseList(profile?.skills);
           <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-7">
 
             {profileLoading ? (
+
               <p className="text-sm text-gray-500">
                 Loading profile details...
               </p>
+
             ) : profile ? (
 
               <div className="space-y-6">
@@ -570,6 +692,7 @@ const skills = parseList(profile?.skills);
 
                   {isFreelancer &&
                     professionalTitle && (
+
                       <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
 
                         <div className="flex items-center gap-2">
@@ -596,6 +719,7 @@ const skills = parseList(profile?.skills);
 
                   {isFreelancer &&
                     category && (
+
                       <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
 
                         <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
@@ -612,6 +736,7 @@ const skills = parseList(profile?.skills);
                   {/* COMPANY */}
 
                   {companyName && (
+
                     <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
 
                       <div className="flex items-center gap-2">
@@ -637,6 +762,7 @@ const skills = parseList(profile?.skills);
                   {/* INDUSTRY */}
 
                   {industry && (
+
                     <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
 
                       <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
@@ -653,6 +779,7 @@ const skills = parseList(profile?.skills);
                   {/* CITY */}
 
                   {city && (
+
                     <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
 
                       <div className="flex items-center gap-2">
@@ -680,6 +807,7 @@ const skills = parseList(profile?.skills);
                 {/* ABOUT */}
 
                 {about && (
+
                   <div className="border-t border-gray-100 pt-5">
 
                     <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
@@ -696,6 +824,7 @@ const skills = parseList(profile?.skills);
                 {/* SKILLS */}
 
                 {isFreelancer && (
+
                   <div className="border-t border-gray-100 pt-5">
 
                     <div className="flex items-center gap-2">
@@ -712,13 +841,11 @@ const skills = parseList(profile?.skills);
                     </div>
 
                     {skills.length > 0 ? (
+
                       <div className="mt-3 flex flex-wrap gap-2">
 
                         {skills.map(
-                          (
-                            skill,
-                            index
-                          ) => (
+                          (skill, index) => (
                             <span
                               key={`${skill}-${index}`}
                               className="rounded-lg bg-teal-50 px-3 py-1.5 text-sm font-medium text-teal-700"
@@ -729,7 +856,9 @@ const skills = parseList(profile?.skills);
                         )}
 
                       </div>
+
                     ) : (
+
                       <p className="mt-3 text-sm text-gray-500">
                         No skills added.
                       </p>
@@ -741,8 +870,8 @@ const skills = parseList(profile?.skills);
                 {/* CLIENT REQUIREMENTS */}
 
                 {!isFreelancer &&
-                  requirements.length >
-                    0 && (
+                  requirements.length > 0 && (
+
                     <div className="border-t border-gray-100 pt-5">
 
                       <p className="text-sm font-semibold text-gray-900">
@@ -756,6 +885,7 @@ const skills = parseList(profile?.skills);
                             requirement,
                             index
                           ) => (
+
                             <span
                               key={`${requirement}-${index}`}
                               className="rounded-lg bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-700"
@@ -791,6 +921,7 @@ const skills = parseList(profile?.skills);
                       {/* LINKEDIN */}
 
                       {linkedinUrl && (
+
                         <a
                           href={linkedinUrl}
                           target="_blank"
@@ -825,6 +956,7 @@ const skills = parseList(profile?.skills);
                       {/* GITHUB */}
 
                       {githubUrl && (
+
                         <a
                           href={githubUrl}
                           target="_blank"
@@ -859,6 +991,7 @@ const skills = parseList(profile?.skills);
                       {/* GOOGLE DRIVE */}
 
                       {googleDriveUrl && (
+
                         <a
                           href={googleDriveUrl}
                           target="_blank"
@@ -890,11 +1023,10 @@ const skills = parseList(profile?.skills);
                         </a>
                       )}
 
-                      {/* ==================================================
-                          RESUME
-                      ================================================== */}
+                      {/* RESUME */}
 
                       {resumeUrl && (
+
                         <a
                           href={resumeFullUrl}
                           target="_blank"
@@ -903,10 +1035,12 @@ const skills = parseList(profile?.skills);
                         >
 
                           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-50">
+
                             <FileText
                               size={18}
                               className="text-red-500"
                             />
+
                           </div>
 
                           <div className="min-w-0 flex-1">
@@ -932,6 +1066,7 @@ const skills = parseList(profile?.skills);
                       {/* COMPANY WEBSITE */}
 
                       {companyWebsite && (
+
                         <a
                           href={companyWebsite}
                           target="_blank"
@@ -964,6 +1099,7 @@ const skills = parseList(profile?.skills);
                       )}
 
                     </div>
+
                   </div>
                 )}
 
@@ -982,7 +1118,201 @@ const skills = parseList(profile?.skills);
                 </p>
 
               </div>
+            )}
 
+          </div>
+
+        </section>
+
+        {/* ==================================================
+            USER VERIFICATION
+        ================================================== */}
+
+        <section>
+
+          <div className="mb-4 flex items-center gap-3">
+
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100">
+
+              <ShieldCheck
+                size={20}
+                className="text-emerald-600"
+              />
+
+            </div>
+
+            <div>
+
+              <h2 className="text-lg font-bold text-gray-900 sm:text-xl">
+                User Verification
+              </h2>
+
+              <p className="text-sm text-gray-500">
+                Submit your profile for admin review
+              </p>
+
+            </div>
+
+          </div>
+
+          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-7">
+
+            {verificationLoading ? (
+
+              <p className="text-sm text-gray-500">
+                Checking verification status...
+              </p>
+
+            ) : (
+
+              <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+
+                <div className="flex items-start gap-4">
+
+                  <div
+                    className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${
+                      verificationStatus ===
+                      "approved"
+                        ? "bg-emerald-100"
+                        : verificationStatus ===
+                            "pending"
+                          ? "bg-yellow-100"
+                          : verificationStatus ===
+                              "rejected"
+                            ? "bg-red-100"
+                            : "bg-gray-100"
+                    }`}
+                  >
+
+                    {verificationStatus ===
+                    "approved" ? (
+
+                      <CheckCircle2
+                        size={23}
+                        className="text-emerald-600"
+                      />
+
+                    ) : verificationStatus ===
+                      "pending" ? (
+
+                      <ShieldCheck
+                        size={23}
+                        className="text-yellow-600"
+                      />
+
+                    ) : verificationStatus ===
+                      "rejected" ? (
+
+                      <ShieldCheck
+                        size={23}
+                        className="text-red-600"
+                      />
+
+                    ) : (
+
+                      <ShieldCheck
+                        size={23}
+                        className="text-gray-500"
+                      />
+
+                    )}
+
+                  </div>
+
+                  <div>
+
+                    <p className="text-sm font-semibold text-gray-900">
+
+                      {verificationStatus ===
+                        "approved" &&
+                        "Your profile is verified"}
+
+                      {verificationStatus ===
+                        "pending" &&
+                        "Verification request pending"}
+
+                      {verificationStatus ===
+                        "rejected" &&
+                        "Verification request rejected"}
+
+                      {verificationStatus ===
+                        "not_submitted" &&
+                        "Your profile is not verified"}
+
+                    </p>
+
+                    <p className="mt-1 text-sm text-gray-500">
+
+                      {verificationStatus ===
+                        "approved" &&
+                        "Your profile has been reviewed and approved by an administrator."}
+
+                      {verificationStatus ===
+                        "pending" &&
+                        "Your profile is currently waiting for admin review."}
+
+                      {verificationStatus ===
+                        "rejected" &&
+                        "Please review the rejection reason and submit your profile again."}
+
+                      {verificationStatus ===
+                        "not_submitted" &&
+                        "Submit your completed profile for review by an administrator."}
+
+                    </p>
+
+                    {verificationStatus ===
+                      "rejected" &&
+                      rejectionReason && (
+
+                        <div className="mt-3 rounded-lg border border-red-100 bg-red-50 p-3">
+
+                          <p className="text-xs font-semibold uppercase tracking-wide text-red-500">
+                            Rejection Reason
+                          </p>
+
+                          <p className="mt-1 text-sm text-red-700">
+                            {rejectionReason}
+                          </p>
+
+                        </div>
+                      )}
+
+                  </div>
+
+                </div>
+
+                {verificationStatus !==
+                  "approved" &&
+                  verificationStatus !==
+                    "pending" && (
+
+                    <button
+                      type="button"
+                      onClick={
+                        submitVerificationRequest
+                      }
+                      disabled={
+                        verificationSubmitting
+                      }
+                      className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+
+                      <ShieldCheck
+                        size={18}
+                      />
+
+                      {verificationSubmitting
+                        ? "Submitting..."
+                        : verificationStatus ===
+                            "rejected"
+                          ? "Resubmit for Verification"
+                          : "Submit for Verification"}
+
+                    </button>
+                  )}
+
+              </div>
             )}
 
           </div>
@@ -998,10 +1328,12 @@ const skills = parseList(profile?.skills);
           <div className="mb-4 flex items-center gap-3">
 
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-100">
+
               <BriefcaseBusiness
                 size={20}
                 className="text-teal-600"
               />
+
             </div>
 
             <div>
@@ -1022,56 +1354,73 @@ const skills = parseList(profile?.skills);
 
             <div className="grid gap-4 sm:grid-cols-3">
 
-             {/* SKILLS */}
+              {/* SKILLS */}
 
-<div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md">
+              <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md">
 
-  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100">
-    <BriefcaseBusiness
-      size={21}
-      className="text-emerald-600"
-    />
-  </div>
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100">
 
-  <p className="mt-4 text-sm text-gray-500">
-    Skills
-  </p>
+                  <BriefcaseBusiness
+                    size={21}
+                    className="text-emerald-600"
+                  />
 
-  <div className="mt-3 flex flex-wrap gap-2">
-    {skills.length > 0 ? (
-      skills.map((skill, index) => {
-        // Clean unwanted [, ], " and ' characters
-        const cleanSkill = String(skill)
-          .replace(/[\[\]"']/g, "")
-          .trim();
+                </div>
 
-        return cleanSkill ? (
-          <span
-            key={`${cleanSkill}-${index}`}
-            className="inline-flex items-center rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-700"
-          >
-            {cleanSkill}
-          </span>
-        ) : null;
-      })
-    ) : (
-      <p className="text-sm font-medium text-gray-400">
-        No skills added
-      </p>
-    )}
-  </div>
+                <p className="mt-4 text-sm text-gray-500">
+                  Skills
+                </p>
 
-</div>
+                <div className="mt-3 flex flex-wrap gap-2">
+
+                  {skills.length > 0 ? (
+
+                    skills.map(
+                      (skill, index) => {
+
+                        const cleanSkill =
+                          String(skill)
+                            .replace(
+                              /[\[\]"']/g,
+                              ""
+                            )
+                            .trim();
+
+                        return cleanSkill ? (
+
+                          <span
+                            key={`${cleanSkill}-${index}`}
+                            className="inline-flex items-center rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-700"
+                          >
+                            {cleanSkill}
+                          </span>
+
+                        ) : null;
+                      }
+                    )
+
+                  ) : (
+
+                    <p className="text-sm font-medium text-gray-400">
+                      No skills added
+                    </p>
+                  )}
+
+                </div>
+
+              </div>
 
               {/* PROJECTS */}
 
               <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md">
 
                 <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-teal-100">
+
                   <CheckCircle2
                     size={21}
                     className="text-teal-600"
                   />
+
                 </div>
 
                 <p className="mt-4 text-sm text-gray-500">
@@ -1089,10 +1438,12 @@ const skills = parseList(profile?.skills);
               <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md">
 
                 <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100">
+
                   <IndianRupee
                     size={21}
                     className="text-emerald-600"
                   />
+
                 </div>
 
                 <p className="mt-4 text-sm text-gray-500">
@@ -1116,10 +1467,12 @@ const skills = parseList(profile?.skills);
               <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
 
                 <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100">
+
                   <FolderOpen
                     size={21}
                     className="text-emerald-600"
                   />
+
                 </div>
 
                 <p className="mt-4 text-sm text-gray-500">
@@ -1137,10 +1490,12 @@ const skills = parseList(profile?.skills);
               <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
 
                 <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-teal-100">
+
                   <Users
                     size={21}
                     className="text-teal-600"
                   />
+
                 </div>
 
                 <p className="mt-4 text-sm text-gray-500">
@@ -1158,10 +1513,12 @@ const skills = parseList(profile?.skills);
               <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
 
                 <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100">
+
                   <CheckCircle2
                     size={21}
                     className="text-emerald-600"
                   />
+
                 </div>
 
                 <p className="mt-4 text-sm text-gray-500">
@@ -1175,7 +1532,6 @@ const skills = parseList(profile?.skills);
               </div>
 
             </div>
-
           )}
 
         </section>
@@ -1189,10 +1545,12 @@ const skills = parseList(profile?.skills);
           <div className="mb-4 flex items-center gap-3">
 
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100">
+
               <UserRound
                 size={20}
                 className="text-emerald-600"
               />
+
             </div>
 
             <div>
@@ -1225,10 +1583,12 @@ const skills = parseList(profile?.skills);
           <div className="mb-4 flex items-center gap-3">
 
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-100">
+
               <LockKeyhole
                 size={20}
                 className="text-teal-600"
               />
+
             </div>
 
             <div>
@@ -1245,7 +1605,7 @@ const skills = parseList(profile?.skills);
 
           </div>
 
-          <ChangePasswordForm/>
+          <ChangePasswordForm />
 
         </section>
 
