@@ -31,7 +31,8 @@ const createProject = async (req, res) => {
       !title ||
       !description ||
       !category ||
-      !budget ||
+      budget === undefined ||
+      budget === null ||
       !budget_type ||
       !deadline
     ) {
@@ -231,6 +232,51 @@ const getClientProjects = async (req, res) => {
 };
 
 // ============================================
+// GET ALL AVAILABLE PROJECTS
+// ============================================
+
+const getAllProjects = async (req, res) => {
+  try {
+    const result = await pool.query(
+      `
+      SELECT
+        p.*,
+        cp.user_id AS client_user_id,
+        cp.fullname AS client_name,
+        cp.city AS client_city,
+        u.fullname AS client_user_name,
+        u.email AS client_email
+      FROM projects p
+      JOIN client_profiles cp
+        ON p.client_id = cp.id
+      JOIN users u
+        ON cp.user_id = u.id
+      ORDER BY p.id DESC
+      `
+    );
+
+    console.log(
+      "GET ALL PROJECTS:",
+      result.rows.length
+    );
+
+    return res.status(200).json({
+      success: true,
+      count: result.rows.length,
+      projects: result.rows,
+    });
+  } catch (error) {
+    console.error("GET ALL PROJECTS ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server Error",
+      error: error.message,
+    });
+  }
+};
+
+// ============================================
 // GET SINGLE PROJECT
 // ============================================
 
@@ -242,10 +288,16 @@ const getProjectById = async (req, res) => {
       `
       SELECT
         p.*,
-        cp.user_id
+        cp.user_id,
+        cp.fullname AS client_name,
+        cp.city AS client_city,
+        u.fullname AS client_user_name,
+        u.email AS client_email
       FROM projects p
       JOIN client_profiles cp
         ON p.client_id = cp.id
+      JOIN users u
+        ON cp.user_id = u.id
       WHERE p.id = $1
       `,
       [id]
@@ -296,6 +348,7 @@ const updateProject = async (req, res) => {
       !description ||
       !category ||
       budget === undefined ||
+      budget === null ||
       !budget_type ||
       !deadline
     ) {
@@ -693,7 +746,10 @@ const completeProject = async (req, res) => {
       });
     }
 
-    if (project.status !== "in_progress") {
+    if (
+      !project.status ||
+      project.status.toLowerCase() !== "in_progress"
+    ) {
       await client.query("ROLLBACK");
 
       return res.status(400).json({
@@ -842,39 +898,6 @@ const deleteProject = async (req, res) => {
 };
 
 // ============================================
-// GET ALL AVAILABLE PROJECTS
-// ============================================
-
-const getAllProjects = async (req, res) => {
-  try {
-    const result = await pool.query(
-      `
-      SELECT
-        p.*,
-        cp.user_id AS client_user_id
-      FROM projects p
-      JOIN client_profiles cp
-        ON p.client_id = cp.id
-      ORDER BY p.id DESC
-      `
-    );
-
-    return res.status(200).json({
-      success: true,
-      projects: result.rows,
-    });
-  } catch (error) {
-    console.error("GET ALL PROJECTS ERROR:", error);
-
-    return res.status(500).json({
-      success: false,
-      message: "Server Error",
-      error: error.message,
-    });
-  }
-};
-
-// ============================================
 // SEARCH & FILTER PROJECTS
 // ============================================
 
@@ -888,11 +911,17 @@ const searchProjects = async (req, res) => {
       budget_type,
     } = req.query;
 
+    console.log("=================================");
+    console.log("SEARCH PROJECTS");
+    console.log("QUERY:", req.query);
+    console.log("=================================");
+
     let query = `
       SELECT
         p.*,
         cp.user_id AS client_user_id,
         cp.fullname AS client_name,
+        cp.city AS client_city,
         u.fullname AS client_user_name,
         u.email AS client_email
       FROM projects p
@@ -900,20 +929,25 @@ const searchProjects = async (req, res) => {
         ON p.client_id = cp.id
       JOIN users u
         ON cp.user_id = u.id
-      WHERE p.status = 'open'
+      WHERE 1 = 1
     `;
 
     const values = [];
     let parameterIndex = 1;
 
+    // ============================================
+    // SEARCH TEXT
+    // ============================================
+
     if (search && search.trim() !== "") {
       query += `
         AND (
-          LOWER(p.title) LIKE LOWER($${parameterIndex})
-          OR LOWER(p.description) LIKE LOWER($${parameterIndex})
-          OR LOWER(p.category) LIKE LOWER($${parameterIndex})
+          LOWER(COALESCE(p.title, '')) LIKE LOWER($${parameterIndex})
+          OR LOWER(COALESCE(p.description, '')) LIKE LOWER($${parameterIndex})
+          OR LOWER(COALESCE(p.category, '')) LIKE LOWER($${parameterIndex})
           OR LOWER(COALESCE(p.skills, '')) LIKE LOWER($${parameterIndex})
           OR LOWER(COALESCE(cp.fullname, '')) LIKE LOWER($${parameterIndex})
+          OR LOWER(COALESCE(cp.city, '')) LIKE LOWER($${parameterIndex})
           OR LOWER(COALESCE(u.fullname, '')) LIKE LOWER($${parameterIndex})
           OR LOWER(COALESCE(u.email, '')) LIKE LOWER($${parameterIndex})
         )
@@ -923,52 +957,84 @@ const searchProjects = async (req, res) => {
       parameterIndex++;
     }
 
+    // ============================================
+    // CATEGORY
+    // ============================================
+
     if (category && category.trim() !== "") {
       query += `
         AND LOWER(COALESCE(p.category, ''))
-          = LOWER($${parameterIndex})
+        LIKE LOWER($${parameterIndex})
       `;
 
-      values.push(category.trim());
+      values.push(`%${category.trim()}%`);
       parameterIndex++;
     }
+
+    // ============================================
+    // SKILLS
+    // ============================================
 
     if (skills && skills.trim() !== "") {
       query += `
         AND LOWER(COALESCE(p.skills, ''))
-          LIKE LOWER($${parameterIndex})
+        LIKE LOWER($${parameterIndex})
       `;
 
       values.push(`%${skills.trim()}%`);
       parameterIndex++;
     }
 
+    // ============================================
+    // BUDGET TYPE
+    // ============================================
+
     if (budget_type && budget_type.trim() !== "") {
       query += `
-        AND p.budget_type = $${parameterIndex}
+        AND LOWER(COALESCE(p.budget_type, ''))
+        = LOWER($${parameterIndex})
       `;
 
       values.push(budget_type.trim());
       parameterIndex++;
     }
 
+    // ============================================
+    // LOCATION
+    // ============================================
+
     if (location && location.trim() !== "") {
       query += `
         AND LOWER(COALESCE(cp.city, ''))
-          LIKE LOWER($${parameterIndex})
+        LIKE LOWER($${parameterIndex})
       `;
 
       values.push(`%${location.trim()}%`);
       parameterIndex++;
     }
 
+    // ============================================
+    // ORDER
+    // ============================================
+
     query += `
       ORDER BY p.id DESC
     `;
 
+    console.log("SQL QUERY:");
+    console.log(query);
+
+    console.log("SQL VALUES:");
+    console.log(values);
+
     const result = await pool.query(
       query,
       values
+    );
+
+    console.log(
+      "SEARCH RESULT COUNT:",
+      result.rows.length
     );
 
     return res.status(200).json({

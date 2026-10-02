@@ -14,7 +14,13 @@ import {
   XCircle,
   BriefcaseBusiness,
   Eye,
+  MessageCircle,
+  Loader2,
 } from "lucide-react";
+
+// ============================================================
+// USER INTERFACE
+// ============================================================
 
 interface User {
   id: number;
@@ -23,32 +29,78 @@ interface User {
   role: "admin" | "freelancer" | "client";
 }
 
+// ============================================================
+// APPLICATION INTERFACE
+// ============================================================
+
 interface Application {
   id: number;
   project_id: number;
   freelancer_id: number;
+
+  // This can be returned by the backend,
+  // but the frontend does NOT depend on it
+  // to start a conversation.
+  client_id?: number | null;
+
   cover_letter: string;
+
   proposed_budget: string | number;
+
   delivery_time: number;
+
   status: "pending" | "accepted" | "rejected";
+
   created_at?: string;
   updated_at?: string;
+
   project_title: string;
   project_category: string;
 }
 
+// ============================================================
+// PAGE
+// ============================================================
+
 export default function FreelancerApplicationsPage() {
   const router = useRouter();
 
+  // ============================================================
+  // USER
+  // ============================================================
+
   const [user, setUser] = useState<User | null>(null);
-  const [applications, setApplications] = useState<Application[]>([]);
+
+  // ============================================================
+  // APPLICATIONS
+  // ============================================================
+
+  const [applications, setApplications] = useState<
+    Application[]
+  >([]);
+
+  // ============================================================
+  // LOADING
+  // ============================================================
 
   const [loading, setLoading] = useState(true);
+
+  // ============================================================
+  // ERROR
+  // ============================================================
+
   const [error, setError] = useState("");
 
-  // ============================================
+  // ============================================================
+  // MESSAGE LOADING
+  // ============================================================
+
+  const [messagingApplicationId, setMessagingApplicationId] =
+    useState<number | null>(null);
+
+  // ============================================================
   // CHECK LOGGED-IN FREELANCER
-  // ============================================
+  // ============================================================
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
@@ -77,12 +129,14 @@ export default function FreelancerApplicationsPage() {
     }
   }, [router]);
 
-  // ============================================
+  // ============================================================
   // FETCH APPLICATIONS
-  // ============================================
+  // ============================================================
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      return;
+    }
 
     const fetchApplications = async () => {
       try {
@@ -90,20 +144,37 @@ export default function FreelancerApplicationsPage() {
         setError("");
 
         const response = await fetch(
-          `http://localhost:5000/api/proposals/freelancer/${user.id}`
+          `http://localhost:5000/api/proposals/freelancer/${user.id}`,
+          {
+            method: "GET",
+            cache: "no-store",
+          }
         );
 
         const data = await response.json();
 
+        console.log(
+          "FREELANCER APPLICATIONS RESPONSE:",
+          data
+        );
+
         if (!response.ok || !data.success) {
           throw new Error(
-            data.message || "Failed to load applications."
+            data.message ||
+              "Failed to load applications."
           );
         }
 
-        setApplications(data.proposals || []);
+        setApplications(
+          Array.isArray(data.proposals)
+            ? data.proposals
+            : []
+        );
       } catch (error) {
-        console.error("FETCH APPLICATIONS ERROR:", error);
+        console.error(
+          "FETCH APPLICATIONS ERROR:",
+          error
+        );
 
         setError(
           error instanceof Error
@@ -118,19 +189,135 @@ export default function FreelancerApplicationsPage() {
     fetchApplications();
   }, [user]);
 
-  // ============================================
+  // ============================================================
   // VIEW PROJECT
-  // ============================================
+  // ============================================================
 
-  const handleViewProject = (projectId: number) => {
+  const handleViewProject = (
+    projectId: number
+  ) => {
     router.push(
       `/freelancer/browse-projects/${projectId}`
     );
   };
 
-  // ============================================
-  // STATUS HELPERS
-  // ============================================
+  // ============================================================
+  // START / OPEN CONVERSATION WITH CLIENT
+  // ============================================================
+
+  const handleMessageClient = async (
+    application: Application
+  ) => {
+    if (!user) {
+      return;
+    }
+
+    // Only accepted applications can message
+    if (application.status !== "accepted") {
+      setError(
+        "You can message the client only after your proposal is accepted."
+      );
+
+      return;
+    }
+
+    try {
+      setMessagingApplicationId(
+        application.id
+      );
+
+      setError("");
+
+      console.log(
+        "STARTING CONVERSATION:",
+        {
+          project_id: application.project_id,
+          user_id: user.id,
+        }
+      );
+
+      // ========================================================
+      // CREATE OR GET CONVERSATION
+      // ========================================================
+
+      const response = await fetch(
+        "http://localhost:5000/api/messages/conversations",
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json",
+          },
+
+          body: JSON.stringify({
+            project_id: application.project_id,
+            user_id: user.id,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      console.log(
+        "FREELANCER CONVERSATION RESPONSE:",
+        data
+      );
+
+      // ========================================================
+      // CHECK RESPONSE
+      // ========================================================
+
+      if (!response.ok || !data.success) {
+        throw new Error(
+          data.message ||
+            "Unable to start conversation."
+        );
+      }
+
+      // ========================================================
+      // GET CONVERSATION ID
+      // ========================================================
+
+      const conversationId =
+        data.conversation?.id;
+
+      if (!conversationId) {
+        console.error(
+          "CONVERSATION ID MISSING:",
+          data
+        );
+
+        throw new Error(
+          "Conversation ID was not returned by the server."
+        );
+      }
+
+      // ========================================================
+      // OPEN CHAT
+      // ========================================================
+
+      router.push(
+        `/freelancer/messages/${conversationId}`
+      );
+    } catch (error) {
+      console.error(
+        "START FREELANCER CONVERSATION ERROR:",
+        error
+      );
+
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Unable to start conversation."
+      );
+    } finally {
+      setMessagingApplicationId(null);
+    }
+  };
+
+  // ============================================================
+  // STATUS CLASSES
+  // ============================================================
 
   const getStatusClasses = (
     status: Application["status"]
@@ -146,6 +333,10 @@ export default function FreelancerApplicationsPage() {
     return "bg-yellow-100 text-yellow-700";
   };
 
+  // ============================================================
+  // STATUS LABEL
+  // ============================================================
+
   const getStatusLabel = (
     status: Application["status"]
   ) => {
@@ -160,41 +351,48 @@ export default function FreelancerApplicationsPage() {
     return "Pending";
   };
 
-  // ============================================
-  // LOADING
-  // ============================================
+  // ============================================================
+  // LOADING SCREEN
+  // ============================================================
 
   if (!user || loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-100">
         <div className="text-center">
-
-          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-emerald-200 border-t-emerald-600" />
+          <div
+            className="
+              mx-auto
+              h-10
+              w-10
+              animate-spin
+              rounded-full
+              border-4
+              border-emerald-200
+              border-t-emerald-600
+            "
+          />
 
           <p className="mt-4 text-gray-600">
             Loading your applications...
           </p>
-
         </div>
       </div>
     );
   }
 
-  // ============================================
+  // ============================================================
   // PAGE
-  // ============================================
+  // ============================================================
 
   return (
     <DashboardLayout role="freelancer">
-
       <div className="w-full">
 
-        {/* ====================================== */}
-        {/* HEADER */}
-        {/* ====================================== */}
+        {/* ======================================================
+            HEADER
+        ====================================================== */}
 
         <div className="mb-6">
-
           <button
             type="button"
             onClick={() =>
@@ -213,12 +411,22 @@ export default function FreelancerApplicationsPage() {
             "
           >
             <ArrowLeft size={18} />
+
             Back to Dashboard
           </button>
 
           <div className="flex items-center gap-3">
-
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100">
+            <div
+              className="
+                flex
+                h-11
+                w-11
+                items-center
+                justify-center
+                rounded-xl
+                bg-emerald-100
+              "
+            >
               <FileText
                 size={22}
                 className="text-emerald-600"
@@ -226,83 +434,135 @@ export default function FreelancerApplicationsPage() {
             </div>
 
             <div>
-
-              <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
+              <h1
+                className="
+                  text-2xl
+                  font-bold
+                  text-gray-900
+                  sm:text-3xl
+                "
+              >
                 My Applications
               </h1>
 
               <p className="mt-1 text-gray-500">
-                Track all the proposals you have submitted.
+                Track all the proposals you
+                have submitted.
               </p>
-
             </div>
-
           </div>
-
         </div>
 
-        {/* ====================================== */}
-        {/* ERROR */}
-        {/* ====================================== */}
+        {/* ======================================================
+            ERROR
+        ====================================================== */}
 
         {error && (
-          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-600">
+          <div
+            className="
+              mb-6
+              rounded-xl
+              border
+              border-red-200
+              bg-red-50
+              p-4
+              text-sm
+              font-medium
+              text-red-600
+            "
+          >
             {error}
           </div>
         )}
 
-        {/* ====================================== */}
-        {/* EMPTY STATE */}
-        {/* ====================================== */}
+        {/* ======================================================
+            EMPTY STATE
+        ====================================================== */}
 
-        {!error && applications.length === 0 && (
-          <div className="rounded-2xl border border-gray-200 bg-white p-10 text-center shadow-sm">
-
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
-              <BriefcaseBusiness
-                size={30}
-                className="text-emerald-600"
-              />
-            </div>
-
-            <h2 className="mt-5 text-xl font-semibold text-gray-900">
-              No applications yet
-            </h2>
-
-            <p className="mx-auto mt-2 max-w-md text-gray-500">
-              You haven't submitted any proposals yet.
-              Browse projects and apply to jobs that match your skills.
-            </p>
-
-            <button
-              type="button"
-              onClick={() =>
-                router.push(
-                  "/freelancer/browse-projects"
-                )
-              }
+        {!error &&
+          applications.length === 0 && (
+            <div
               className="
-                mt-5
-                rounded-xl
-                bg-emerald-600
-                px-5
-                py-3
-                text-sm
-                font-semibold
-                text-white
-                transition
-                hover:bg-emerald-700
+                rounded-2xl
+                border
+                border-gray-200
+                bg-white
+                p-10
+                text-center
+                shadow-sm
               "
             >
-              Browse Projects
-            </button>
+              <div
+                className="
+                  mx-auto
+                  flex
+                  h-16
+                  w-16
+                  items-center
+                  justify-center
+                  rounded-full
+                  bg-emerald-100
+                "
+              >
+                <BriefcaseBusiness
+                  size={30}
+                  className="text-emerald-600"
+                />
+              </div>
 
-          </div>
-        )}
+              <h2
+                className="
+                  mt-5
+                  text-xl
+                  font-semibold
+                  text-gray-900
+                "
+              >
+                No applications yet
+              </h2>
 
-        {/* ====================================== */}
-        {/* APPLICATION LIST */}
-        {/* ====================================== */}
+              <p
+                className="
+                  mx-auto
+                  mt-2
+                  max-w-md
+                  text-gray-500
+                "
+              >
+                You haven't submitted any
+                proposals yet. Browse projects
+                and apply to jobs that match
+                your skills.
+              </p>
+
+              <button
+                type="button"
+                onClick={() =>
+                  router.push(
+                    "/freelancer/browse-projects"
+                  )
+                }
+                className="
+                  mt-5
+                  rounded-xl
+                  bg-emerald-600
+                  px-5
+                  py-3
+                  text-sm
+                  font-semibold
+                  text-white
+                  transition
+                  hover:bg-emerald-700
+                "
+              >
+                Browse Projects
+              </button>
+            </div>
+          )}
+
+        {/* ======================================================
+            APPLICATION LIST
+        ====================================================== */}
 
         {applications.length > 0 && (
           <div className="space-y-5">
@@ -324,17 +584,37 @@ export default function FreelancerApplicationsPage() {
                   "
                 >
 
-                  {/* ================================= */}
-                  {/* PROJECT HEADER */}
-                  {/* ================================= */}
+                  {/* ==================================================
+                      PROJECT HEADER
+                  ================================================== */}
 
-                  <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
-
+                  <div
+                    className="
+                      flex
+                      flex-col
+                      justify-between
+                      gap-4
+                      lg:flex-row
+                      lg:items-start
+                    "
+                  >
                     <div className="min-w-0">
 
-                      <div className="flex flex-wrap items-center gap-3">
-
-                        <h2 className="text-xl font-bold text-gray-900">
+                      <div
+                        className="
+                          flex
+                          flex-wrap
+                          items-center
+                          gap-3
+                        "
+                      >
+                        <h2
+                          className="
+                            text-xl
+                            font-bold
+                            text-gray-900
+                          "
+                        >
                           {application.project_title}
                         </h2>
 
@@ -354,66 +634,158 @@ export default function FreelancerApplicationsPage() {
                             application.status
                           )}
                         </span>
-
                       </div>
 
-                      <p className="mt-2 text-sm font-medium text-emerald-600">
+                      <p
+                        className="
+                          mt-2
+                          text-sm
+                          font-medium
+                          text-emerald-600
+                        "
+                      >
                         {application.project_category}
                       </p>
-
                     </div>
 
-                    {/* VIEW PROJECT */}
+                    {/* ==================================================
+                        ACTIONS
+                    ================================================== */}
 
-                    <button
-                      type="button"
-                      onClick={() =>
-                        handleViewProject(
-                          application.project_id
-                        )
-                      }
+                    <div
                       className="
-                        inline-flex
-                        items-center
-                        justify-center
-                        gap-2
-                        rounded-xl
-                        border
-                        border-gray-300
-                        px-5
-                        py-3
+                        flex
+                        flex-wrap
+                        gap-3
+                      "
+                    >
+
+                      {/* VIEW PROJECT */}
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleViewProject(
+                            application.project_id
+                          )
+                        }
+                        className="
+                          inline-flex
+                          items-center
+                          justify-center
+                          gap-2
+                          rounded-xl
+                          border
+                          border-gray-300
+                          px-5
+                          py-3
+                          text-sm
+                          font-semibold
+                          text-gray-700
+                          transition
+                          hover:bg-gray-50
+                        "
+                      >
+                        <Eye size={17} />
+
+                        View Project
+                      </button>
+
+                      {/* MESSAGE CLIENT */}
+
+                      {application.status ===
+                        "accepted" && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleMessageClient(
+                              application
+                            )
+                          }
+                          disabled={
+                            messagingApplicationId ===
+                            application.id
+                          }
+                          className="
+                            inline-flex
+                            items-center
+                            justify-center
+                            gap-2
+                            rounded-xl
+                            bg-emerald-600
+                            px-5
+                            py-3
+                            text-sm
+                            font-semibold
+                            text-white
+                            transition
+                            hover:bg-emerald-700
+                            disabled:cursor-not-allowed
+                            disabled:opacity-60
+                          "
+                        >
+                          {messagingApplicationId ===
+                          application.id ? (
+                            <>
+                              <Loader2
+                                size={17}
+                                className="animate-spin"
+                              />
+
+                              Opening...
+                            </>
+                          ) : (
+                            <>
+                              <MessageCircle
+                                size={17}
+                              />
+
+                              Message Client
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* ==================================================
+                      COVER LETTER
+                  ================================================== */}
+
+                  <div
+                    className="
+                      mt-5
+                      rounded-xl
+                      bg-gray-50
+                      p-4
+                    "
+                  >
+                    <p
+                      className="
+                        mb-2
                         text-sm
                         font-semibold
                         text-gray-700
-                        transition
-                        hover:bg-gray-50
                       "
                     >
-                      <Eye size={17} />
-                      View Project
-                    </button>
-
-                  </div>
-
-                  {/* ================================= */}
-                  {/* COVER LETTER */}
-                  {/* ================================= */}
-
-                  <div className="mt-5 rounded-xl bg-gray-50 p-4">
-
-                    <p className="mb-2 text-sm font-semibold text-gray-700">
                       Your Cover Letter
                     </p>
 
-                    <p className="whitespace-pre-line text-sm leading-6 text-gray-600">
+                    <p
+                      className="
+                        whitespace-pre-line
+                        text-sm
+                        leading-6
+                        text-gray-600
+                      "
+                    >
                       {application.cover_letter}
                     </p>
-
                   </div>
 
-                  {/* ================================= */}
-                  {/* PROPOSAL INFORMATION */}
-                  {/* ================================= */}
+                  {/* ==================================================
+                      PROPOSAL INFORMATION
+                  ================================================== */}
 
                   <div
                     className="
@@ -427,9 +799,27 @@ export default function FreelancerApplicationsPage() {
 
                     {/* BUDGET */}
 
-                    <div className="flex items-center gap-3 rounded-xl bg-gray-50 p-4">
-
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100">
+                    <div
+                      className="
+                        flex
+                        items-center
+                        gap-3
+                        rounded-xl
+                        bg-gray-50
+                        p-4
+                      "
+                    >
+                      <div
+                        className="
+                          flex
+                          h-10
+                          w-10
+                          items-center
+                          justify-center
+                          rounded-lg
+                          bg-emerald-100
+                        "
+                      >
                         <DollarSign
                           size={20}
                           className="text-emerald-600"
@@ -437,27 +827,48 @@ export default function FreelancerApplicationsPage() {
                       </div>
 
                       <div>
-
                         <p className="text-xs text-gray-500">
                           Proposed Budget
                         </p>
 
-                        <p className="mt-1 font-semibold text-gray-900">
+                        <p
+                          className="
+                            mt-1
+                            font-semibold
+                            text-gray-900
+                          "
+                        >
                           $
                           {Number(
                             application.proposed_budget
                           ).toFixed(2)}
                         </p>
-
                       </div>
-
                     </div>
 
                     {/* DELIVERY */}
 
-                    <div className="flex items-center gap-3 rounded-xl bg-gray-50 p-4">
-
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100">
+                    <div
+                      className="
+                        flex
+                        items-center
+                        gap-3
+                        rounded-xl
+                        bg-gray-50
+                        p-4
+                      "
+                    >
+                      <div
+                        className="
+                          flex
+                          h-10
+                          w-10
+                          items-center
+                          justify-center
+                          rounded-lg
+                          bg-blue-100
+                        "
+                      >
                         <Clock
                           size={20}
                           className="text-blue-600"
@@ -465,119 +876,219 @@ export default function FreelancerApplicationsPage() {
                       </div>
 
                       <div>
-
                         <p className="text-xs text-gray-500">
                           Delivery Time
                         </p>
 
-                        <p className="mt-1 font-semibold text-gray-900">
-                          {application.delivery_time} days
+                        <p
+                          className="
+                            mt-1
+                            font-semibold
+                            text-gray-900
+                          "
+                        >
+                          {application.delivery_time}{" "}
+                          days
                         </p>
-
                       </div>
-
                     </div>
-
                   </div>
 
-                  {/* ================================= */}
-                  {/* STATUS MESSAGE */}
-                  {/* ================================= */}
+                  {/* ==================================================
+                      ACCEPTED
+                  ================================================== */}
 
                   {application.status ===
                     "accepted" && (
-                    <div className="mt-5 flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-
+                    <div
+                      className="
+                        mt-5
+                        flex
+                        items-start
+                        gap-3
+                        rounded-xl
+                        border
+                        border-emerald-200
+                        bg-emerald-50
+                        p-4
+                      "
+                    >
                       <CheckCircle
                         size={20}
-                        className="mt-0.5 shrink-0 text-emerald-600"
+                        className="
+                          mt-0.5
+                          shrink-0
+                          text-emerald-600
+                        "
                       />
 
                       <div>
-                        <p className="text-sm font-semibold text-emerald-800">
+                        <p
+                          className="
+                            text-sm
+                            font-semibold
+                            text-emerald-800
+                          "
+                        >
                           Proposal accepted
                         </p>
 
-                        <p className="mt-1 text-sm text-emerald-700">
-                          Congratulations! You have been
-                          selected for this project.
+                        <p
+                          className="
+                            mt-1
+                            text-sm
+                            text-emerald-700
+                          "
+                        >
+                          Congratulations! You
+                          have been selected for
+                          this project. You can
+                          now message the client.
                         </p>
                       </div>
-
                     </div>
                   )}
+
+                  {/* ==================================================
+                      REJECTED
+                  ================================================== */}
 
                   {application.status ===
                     "rejected" && (
-                    <div className="mt-5 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4">
-
+                    <div
+                      className="
+                        mt-5
+                        flex
+                        items-start
+                        gap-3
+                        rounded-xl
+                        border
+                        border-red-200
+                        bg-red-50
+                        p-4
+                      "
+                    >
                       <XCircle
                         size={20}
-                        className="mt-0.5 shrink-0 text-red-600"
+                        className="
+                          mt-0.5
+                          shrink-0
+                          text-red-600
+                        "
                       />
 
                       <div>
-                        <p className="text-sm font-semibold text-red-800">
+                        <p
+                          className="
+                            text-sm
+                            font-semibold
+                            text-red-800
+                          "
+                        >
                           Proposal rejected
                         </p>
 
-                        <p className="mt-1 text-sm text-red-700">
-                          This project was awarded to another
-                          freelancer.
+                        <p
+                          className="
+                            mt-1
+                            text-sm
+                            text-red-700
+                          "
+                        >
+                          This project was awarded
+                          to another freelancer.
                         </p>
                       </div>
-
                     </div>
                   )}
+
+                  {/* ==================================================
+                      PENDING
+                  ================================================== */}
 
                   {application.status ===
                     "pending" && (
-                    <div className="mt-5 flex items-start gap-3 rounded-xl border border-yellow-200 bg-yellow-50 p-4">
-
+                    <div
+                      className="
+                        mt-5
+                        flex
+                        items-start
+                        gap-3
+                        rounded-xl
+                        border
+                        border-yellow-200
+                        bg-yellow-50
+                        p-4
+                      "
+                    >
                       <Clock
                         size={20}
-                        className="mt-0.5 shrink-0 text-yellow-600"
+                        className="
+                          mt-0.5
+                          shrink-0
+                          text-yellow-600
+                        "
                       />
 
                       <div>
-                        <p className="text-sm font-semibold text-yellow-800">
+                        <p
+                          className="
+                            text-sm
+                            font-semibold
+                            text-yellow-800
+                          "
+                        >
                           Proposal pending
                         </p>
 
-                        <p className="mt-1 text-sm text-yellow-700">
-                          The client has not made a final decision yet.
+                        <p
+                          className="
+                            mt-1
+                            text-sm
+                            text-yellow-700
+                          "
+                        >
+                          The client has not made
+                          a final decision yet.
                         </p>
                       </div>
-
                     </div>
                   )}
 
-                  {/* ================================= */}
-                  {/* APPLICATION META */}
-                  {/* ================================= */}
+                  {/* ==================================================
+                      APPLICATION DATE
+                  ================================================== */}
 
                   {application.created_at && (
-                    <div className="mt-5 border-t border-gray-100 pt-4">
-
-                      <p className="text-xs text-gray-400">
+                    <div
+                      className="
+                        mt-5
+                        border-t
+                        border-gray-100
+                        pt-4
+                      "
+                    >
+                      <p
+                        className="
+                          text-xs
+                          text-gray-400
+                        "
+                      >
                         Applied on{" "}
                         {new Date(
                           application.created_at
-                        ).toLocaleDateString()}
+                        ).toLocaleDateString(
+                          "en-IN"
+                        )}
                       </p>
-
                     </div>
                   )}
-
                 </div>
               )
             )}
-
           </div>
         )}
-
       </div>
-
     </DashboardLayout>
   );
 }

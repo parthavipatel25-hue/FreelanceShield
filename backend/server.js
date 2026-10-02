@@ -19,6 +19,10 @@ const messageRoutes = require("./routes/messageRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
 const milestoneRoutes = require("./routes/milestoneRoutes");
 const userVerificationRoutes = require("./routes/userVerificationRoutes");
+const activityLogRoutes = require("./routes/activityLogRoutes");
+const adminMonitoringRoutes = require("./routes/adminMonitoringRoutes");
+const securityReportRoutes = require("./routes/securityReportRoutes");
+const riskRoutes = require("./routes/riskRoutes");
 
 app.use(
   cors({
@@ -52,6 +56,10 @@ app.use("/api/messages", messageRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/milestones", milestoneRoutes);
 app.use("/api/user-verification", userVerificationRoutes);
+app.use("/api/activity-logs", activityLogRoutes);
+app.use("/api/admin-monitoring", adminMonitoringRoutes);
+app.use("/api/security-reports", securityReportRoutes);
+app.use("/api/risks", riskRoutes);
 
 app.get("/", (req, res) => {
   res.status(200).send("🚀 FreelanceShield Backend is Running...");

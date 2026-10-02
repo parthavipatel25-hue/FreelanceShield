@@ -20,6 +20,9 @@ import {
   ListChecks,
   Star,
   ShieldCheck,
+  Activity,
+  ShieldAlert,
+  AlertTriangle,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -84,6 +87,21 @@ export default function Sidebar({ role }: SidebarProps) {
       title: "User Verification",
       icon: ShieldCheck,
       href: "/admin/verification",
+    },
+    {
+      title: "Activity Logs",
+      icon: Activity,
+      href: "/admin/activity-logs",
+    },
+    {
+      title: "Security Reports",
+      icon: ShieldAlert,
+      href: "/admin/security-reports",
+    },
+    {
+      title: "Risk Management",
+      icon: AlertTriangle,
+      href: "/admin/risk-management",
     },
     {
       title: "Reports",

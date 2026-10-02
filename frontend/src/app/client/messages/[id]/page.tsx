@@ -9,17 +9,23 @@ import {
   ArrowLeft,
   Send,
   MessageCircle,
-  User,
-  Check,
-  CheckCheck,
+  Loader2,
 } from "lucide-react";
 
-interface UserData {
+// ============================================
+// USER INTERFACE
+// ============================================
+
+interface User {
   id: number;
   fullname: string;
   email: string;
   role: "admin" | "freelancer" | "client";
 }
+
+// ============================================
+// CONVERSATION INTERFACE
+// ============================================
 
 interface Conversation {
   id: number;
@@ -29,6 +35,10 @@ interface Conversation {
   project_title: string;
   updated_at: string;
 }
+
+// ============================================
+// MESSAGE INTERFACE
+// ============================================
 
 interface Message {
   id: number;
@@ -41,26 +51,67 @@ interface Message {
   sender_name: string;
 }
 
+// ============================================
+// PAGE
+// ============================================
+
 export default function ClientConversationPage() {
   const router = useRouter();
   const params = useParams();
 
-  const conversationId = params.id;
+  // ============================================
+  // CONVERSATION ID
+  // ============================================
 
-  const [user, setUser] = useState<UserData | null>(null);
+  const conversationId = params.id as string;
+
+  // ============================================
+  // USER
+  // ============================================
+
+  const [user, setUser] = useState<User | null>(null);
+
+  // ============================================
+  // CONVERSATION
+  // ============================================
+
   const [conversation, setConversation] =
     useState<Conversation | null>(null);
+
+  // ============================================
+  // MESSAGES
+  // ============================================
+
   const [messages, setMessages] = useState<Message[]>([]);
-  const [messageText, setMessageText] = useState("");
+
+  // ============================================
+  // MESSAGE INPUT
+  // ============================================
+
+  const [newMessage, setNewMessage] = useState("");
+
+  // ============================================
+  // LOADING
+  // ============================================
 
   const [loading, setLoading] = useState(true);
+
   const [sending, setSending] = useState(false);
+
+  // ============================================
+  // ERROR
+  // ============================================
+
   const [error, setError] = useState("");
+
+  // ============================================
+  // MESSAGE END REF
+  // ============================================
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   // ============================================
-  // GET LOGGED-IN USER
+  // CHECK LOGGED-IN USER
   // ============================================
 
   useEffect(() => {
@@ -72,7 +123,7 @@ export default function ClientConversationPage() {
     }
 
     try {
-      const loggedInUser: UserData = JSON.parse(storedUser);
+      const loggedInUser: User = JSON.parse(storedUser);
 
       if (loggedInUser.role !== "client") {
         router.push("/login");
@@ -84,27 +135,48 @@ export default function ClientConversationPage() {
       console.error("INVALID USER DATA:", error);
 
       localStorage.removeItem("user");
+      localStorage.removeItem("token");
+
       router.push("/login");
     }
   }, [router]);
 
   // ============================================
-  // FETCH CONVERSATION + MESSAGES
+  // FETCH CONVERSATION
   // ============================================
 
   useEffect(() => {
-    if (!user || !conversationId) return;
+    if (!user || !conversationId) {
+      return;
+    }
 
     const fetchConversation = async () => {
       try {
+        setLoading(true);
         setError("");
 
-        const conversationResponse = await fetch(
-          `http://localhost:5000/api/messages/conversations/${conversationId}`
+        // ============================================
+        // GET CONVERSATION
+        // ============================================
+
+       const conversationResponse = await fetch(
+  `http://localhost:5000/api/messages/conversations/${conversationId}?user_id=${user.id}`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            cache: "no-store",
+          }
         );
 
         const conversationData =
           await conversationResponse.json();
+
+        console.log(
+          "CONVERSATION RESPONSE:",
+          conversationData
+        );
 
         if (
           !conversationResponse.ok ||
@@ -116,27 +188,46 @@ export default function ClientConversationPage() {
           );
         }
 
-        const loadedConversation: Conversation =
+        const loadedConversation =
           conversationData.conversation;
 
-        // Make sure this client belongs to the conversation.
+        // ============================================
+        // VERIFY CLIENT
+        // ============================================
+
         if (
           Number(loadedConversation.client_id) !==
           Number(user.id)
         ) {
           throw new Error(
-            "You are not authorized to view this conversation."
+            "You are not allowed to access this conversation."
           );
         }
 
         setConversation(loadedConversation);
 
-        const messagesResponse = await fetch(
-          `http://localhost:5000/api/messages/conversations/${conversationId}/messages`
+        // ============================================
+        // GET MESSAGES
+        // ============================================
+
+       const messagesResponse = await fetch(
+  `http://localhost:5000/api/messages/conversations/${conversationId}/messages?user_id=${user.id}`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            cache: "no-store",
+          }
         );
 
         const messagesData =
           await messagesResponse.json();
+
+        console.log(
+          "MESSAGES RESPONSE:",
+          messagesData
+        );
 
         if (
           !messagesResponse.ok ||
@@ -148,44 +239,49 @@ export default function ClientConversationPage() {
           );
         }
 
-        const loadedMessages: Message[] =
-          messagesData.messages || [];
+        const loadedMessages =
+          Array.isArray(messagesData.messages)
+            ? messagesData.messages
+            : [];
 
         setMessages(loadedMessages);
 
-        // Mark unread received messages as read.
-        const unreadMessages = loadedMessages.filter(
-          (message) =>
-            message.receiver_id === user.id &&
-            !message.is_read
-        );
+        // ============================================
+        // MARK RECEIVED MESSAGES AS READ
+        // ============================================
 
-        await Promise.all(
-          unreadMessages.map((message) =>
-            fetch(
-              `http://localhost:5000/api/messages/messages/${message.id}/read`,
-              {
-                method: "PUT",
-              }
-            )
-          )
-        );
-
-        if (unreadMessages.length > 0) {
-          setMessages((previousMessages) =>
-            previousMessages.map((message) =>
-              message.receiver_id === user.id
-                ? {
-                    ...message,
-                    is_read: true,
-                  }
-                : message
-            )
+        const unreadMessages =
+          loadedMessages.filter(
+            (message: Message) =>
+              Number(message.receiver_id) ===
+                Number(user.id) &&
+              !message.is_read
           );
+
+        for (const message of unreadMessages) {
+          try {
+            await fetch(
+  `http://localhost:5000/api/messages/messages/${message.id}/read`,
+  {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      user_id: Number(user.id),
+    }),
+  }
+);
+          } catch (readError) {
+            console.error(
+              "MARK READ ERROR:",
+              readError
+            );
+          }
         }
       } catch (error) {
         console.error(
-          "FETCH CLIENT CONVERSATION ERROR:",
+          "FETCH CONVERSATION ERROR:",
           error
         );
 
@@ -203,39 +299,7 @@ export default function ClientConversationPage() {
   }, [user, conversationId]);
 
   // ============================================
-  // AUTO REFRESH
-  // ============================================
-
-  useEffect(() => {
-    if (!user || !conversationId) return;
-
-    const interval = setInterval(async () => {
-      try {
-        const response = await fetch(
-          `http://localhost:5000/api/messages/conversations/${conversationId}/messages`
-        );
-
-        const data = await response.json();
-
-        if (response.ok && data.success) {
-          const refreshedMessages: Message[] =
-            data.messages || [];
-
-          setMessages(refreshedMessages);
-        }
-      } catch (error) {
-        console.error(
-          "REFRESH CLIENT MESSAGES ERROR:",
-          error
-        );
-      }
-    }, 5000);
-
-    return () => clearInterval(interval);
-  }, [user, conversationId]);
-
-  // ============================================
-  // AUTO SCROLL
+  // SCROLL TO BOTTOM
   // ============================================
 
   useEffect(() => {
@@ -248,12 +312,14 @@ export default function ClientConversationPage() {
   // SEND MESSAGE
   // ============================================
 
-  const handleSendMessage = async (
-    event: React.FormEvent<HTMLFormElement>
-  ) => {
-    event.preventDefault();
+  const handleSendMessage = async () => {
+    if (!user || !conversation) {
+      return;
+    }
 
-    if (!user || !conversation || !messageText.trim()) {
+    const trimmedMessage = newMessage.trim();
+
+    if (!trimmedMessage) {
       return;
     }
 
@@ -261,7 +327,12 @@ export default function ClientConversationPage() {
       setSending(true);
       setError("");
 
-      const receiverId = conversation.freelancer_id;
+      // ============================================
+      // CLIENT SENDS TO FREELANCER
+      // ============================================
+
+      const receiverId =
+        Number(conversation.freelancer_id);
 
       const response = await fetch(
         "http://localhost:5000/api/messages/messages",
@@ -271,33 +342,54 @@ export default function ClientConversationPage() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            conversation_id: conversation.id,
-            sender_id: user.id,
+            conversation_id: Number(
+              conversation.id
+            ),
+            sender_id: Number(user.id),
             receiver_id: receiverId,
-            message: messageText.trim(),
+            message: trimmedMessage,
           }),
         }
       );
 
       const data = await response.json();
 
+      console.log(
+        "SEND MESSAGE RESPONSE:",
+        data
+      );
+
       if (!response.ok || !data.success) {
         throw new Error(
-          data.message || "Failed to send message."
+          data.message ||
+            "Failed to send message."
         );
       }
 
-      setMessageText("");
+      // ============================================
+      // ADD NEW MESSAGE TO SCREEN
+      // ============================================
+
+      const sentMessage: Message = {
+        ...data.data,
+        sender_name: user.fullname,
+      };
 
       setMessages((previousMessages) => [
         ...previousMessages,
-        {
-          ...data.data,
-          sender_name: user.fullname,
-        },
+        sentMessage,
       ]);
+
+      // ============================================
+      // CLEAR INPUT
+      // ============================================
+
+      setNewMessage("");
     } catch (error) {
-      console.error("SEND CLIENT MESSAGE ERROR:", error);
+      console.error(
+        "SEND MESSAGE ERROR:",
+        error
+      );
 
       setError(
         error instanceof Error
@@ -310,6 +402,44 @@ export default function ClientConversationPage() {
   };
 
   // ============================================
+  // ENTER KEY
+  // ============================================
+
+  const handleKeyDown = (
+    event: React.KeyboardEvent<HTMLTextAreaElement>
+  ) => {
+    if (
+      event.key === "Enter" &&
+      !event.shiftKey
+    ) {
+      event.preventDefault();
+
+      handleSendMessage();
+    }
+  };
+
+  // ============================================
+  // FORMAT TIME
+  // ============================================
+
+  const formatMessageTime = (
+    dateString: string
+  ) => {
+    if (!dateString) {
+      return "";
+    }
+
+    return new Date(
+      dateString
+    ).toLocaleString([], {
+      day: "2-digit",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  // ============================================
   // LOADING
   // ============================================
 
@@ -317,7 +447,12 @@ export default function ClientConversationPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-100">
         <div className="text-center">
-          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-emerald-200 border-t-emerald-600" />
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100">
+            <Loader2
+              size={25}
+              className="animate-spin text-emerald-600"
+            />
+          </div>
 
           <p className="mt-4 text-gray-600">
             Loading conversation...
@@ -328,13 +463,18 @@ export default function ClientConversationPage() {
   }
 
   // ============================================
-  // ERROR
+  // PAGE
   // ============================================
 
-  if (error && !conversation) {
-    return (
-      <DashboardLayout role="client">
-        <div className="w-full">
+  return (
+    <DashboardLayout role="client">
+      <div className="flex h-[calc(100vh-120px)] min-h-[600px] w-full flex-col">
+
+        {/* ============================================
+            HEADER
+        ============================================ */}
+
+        <div className="mb-4">
 
           <button
             type="button"
@@ -342,7 +482,7 @@ export default function ClientConversationPage() {
               router.push("/client/messages")
             }
             className="
-              mb-6
+              mb-4
               flex
               items-center
               gap-2
@@ -354,261 +494,336 @@ export default function ClientConversationPage() {
             "
           >
             <ArrowLeft size={18} />
+
             Back to Messages
           </button>
 
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center">
+          <div
+            className="
+              flex
+              items-center
+              gap-4
+              rounded-2xl
+              border
+              border-gray-200
+              bg-white
+              p-4
+              shadow-sm
+            "
+          >
 
-            <h2 className="text-xl font-semibold text-gray-900">
-              Unable to load conversation
-            </h2>
-
-            <p className="mt-2 text-gray-600">
-              {error}
-            </p>
-
-          </div>
-        </div>
-      </DashboardLayout>
-    );
-  }
-
-  // ============================================
-  // CHAT PAGE
-  // ============================================
-
-  return (
-    <DashboardLayout role="client">
-
-      <div className="flex h-[calc(100vh-120px)] min-h-[600px] w-full flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-
-        {/* HEADER */}
-
-        <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
-
-          <div className="flex min-w-0 items-center gap-3">
-
-            <button
-              type="button"
-              onClick={() =>
-                router.push("/client/messages")
-              }
+            <div
               className="
-                rounded-lg
-                p-2
-                text-gray-500
-                transition
-                hover:bg-gray-100
-                hover:text-gray-800
+                flex
+                h-12
+                w-12
+                shrink-0
+                items-center
+                justify-center
+                rounded-full
+                bg-emerald-100
               "
             >
-              <ArrowLeft size={20} />
-            </button>
-
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100">
               <MessageCircle
-                size={20}
+                size={23}
                 className="text-emerald-600"
               />
             </div>
 
             <div className="min-w-0">
 
-              <h1 className="truncate text-base font-bold text-gray-900">
+              <h1 className="truncate text-lg font-bold text-gray-900 sm:text-xl">
                 {conversation?.project_title ||
                   "Project Conversation"}
               </h1>
 
-              <p className="text-xs text-gray-500">
-                Project #{conversation?.project_id}
+              <p className="mt-1 text-sm text-gray-500">
+                Project #
+                {conversation?.project_id}
               </p>
 
             </div>
 
           </div>
-
         </div>
 
-        {/* ERROR */}
+        {/* ============================================
+            ERROR
+        ============================================ */}
 
         {error && (
-          <div className="border-b border-red-200 bg-red-50 px-5 py-3 text-sm text-red-600">
+          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-600">
             {error}
           </div>
         )}
 
-        {/* MESSAGES */}
+        {/* ============================================
+            CHAT BOX
+        ============================================ */}
 
-        <div className="flex-1 space-y-4 overflow-y-auto bg-gray-50 p-5">
+        <div
+          className="
+            flex
+            min-h-0
+            flex-1
+            flex-col
+            overflow-hidden
+            rounded-2xl
+            border
+            border-gray-200
+            bg-white
+            shadow-sm
+          "
+        >
 
-          {messages.length === 0 && (
-            <div className="flex h-full items-center justify-center">
-              <div className="text-center">
+          {/* ============================================
+              MESSAGES
+          ============================================ */}
 
-                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100">
+          <div
+            className="
+              flex-1
+              overflow-y-auto
+              bg-gray-50
+              p-4
+              sm:p-6
+            "
+          >
+
+            {messages.length === 0 ? (
+              <div
+                className="
+                  flex
+                  h-full
+                  flex-col
+                  items-center
+                  justify-center
+                  text-center
+                "
+              >
+
+                <div
+                  className="
+                    flex
+                    h-16
+                    w-16
+                    items-center
+                    justify-center
+                    rounded-full
+                    bg-emerald-100
+                  "
+                >
                   <MessageCircle
-                    size={24}
+                    size={30}
                     className="text-emerald-600"
                   />
                 </div>
 
-                <p className="mt-3 font-medium text-gray-700">
+                <h2 className="mt-4 text-lg font-semibold text-gray-900">
                   No messages yet
-                </p>
+                </h2>
 
                 <p className="mt-1 text-sm text-gray-500">
                   Start the conversation with the freelancer.
                 </p>
 
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="space-y-4">
 
-          {messages.map((message) => {
-            const isMine =
-              message.sender_id === user.id;
+                {messages.map((message) => {
 
-            return (
-              <div
-                key={message.id}
-                className={`flex ${
-                  isMine
-                    ? "justify-end"
-                    : "justify-start"
-                }`}
-              >
+                  const isOwnMessage =
+                    Number(message.sender_id) ===
+                    Number(user.id);
 
-                <div
-                  className={`
-                    max-w-[80%]
-                    rounded-2xl
-                    px-4
-                    py-3
-                    shadow-sm
-                    sm:max-w-[65%]
-                    ${
-                      isMine
-                        ? "rounded-br-md bg-emerald-600 text-white"
-                        : "rounded-bl-md border border-gray-200 bg-white text-gray-800"
-                    }
-                  `}
-                >
+                  return (
+                    <div
+                      key={message.id}
+                      className={`flex ${
+                        isOwnMessage
+                          ? "justify-end"
+                          : "justify-start"
+                      }`}
+                    >
 
-                  {!isMine && (
-                    <div className="mb-1 flex items-center gap-1 text-xs font-semibold text-emerald-600">
-                      <User size={13} />
-                      {message.sender_name}
+                      <div
+                        className={`
+                          max-w-[80%]
+                          sm:max-w-[65%]
+                          ${
+                            isOwnMessage
+                              ? "items-end"
+                              : "items-start"
+                          }
+                        `}
+                      >
+
+                        {/* SENDER */}
+
+                        <p
+                          className={`
+                            mb-1
+                            px-2
+                            text-xs
+                            font-medium
+                            ${
+                              isOwnMessage
+                                ? "text-right text-emerald-600"
+                                : "text-left text-gray-500"
+                            }
+                          `}
+                        >
+                          {isOwnMessage
+                            ? "You"
+                            : message.sender_name}
+                        </p>
+
+                        {/* MESSAGE */}
+
+                        <div
+                          className={`
+                            rounded-2xl
+                            px-4
+                            py-3
+                            ${
+                              isOwnMessage
+                                ? "rounded-br-md bg-emerald-600 text-white"
+                                : "rounded-bl-md border border-gray-200 bg-white text-gray-800"
+                            }
+                          `}
+                        >
+
+                          <p className="whitespace-pre-wrap break-words text-sm leading-6">
+                            {message.message}
+                          </p>
+
+                        </div>
+
+                        {/* TIME */}
+
+                        <p
+                          className={`
+                            mt-1
+                            px-2
+                            text-[11px]
+                            ${
+                              isOwnMessage
+                                ? "text-right text-gray-400"
+                                : "text-left text-gray-400"
+                            }
+                          `}
+                        >
+                          {formatMessageTime(
+                            message.created_at
+                          )}
+                        </p>
+
+                      </div>
+
                     </div>
-                  )}
+                  );
+                })}
 
-                  <p className="whitespace-pre-wrap break-words text-sm leading-6">
-                    {message.message}
-                  </p>
-
-                  <div
-                    className={`
-                      mt-2
-                      flex
-                      items-center
-                      justify-end
-                      gap-1
-                      text-[11px]
-                      ${
-                        isMine
-                          ? "text-emerald-100"
-                          : "text-gray-400"
-                      }
-                    `}
-                  >
-
-                    {new Date(
-                      message.created_at
-                    ).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-
-                    {isMine &&
-                      (message.is_read ? (
-                        <CheckCheck size={14} />
-                      ) : (
-                        <Check size={14} />
-                      ))}
-
-                  </div>
-
-                </div>
+                <div ref={messagesEndRef} />
 
               </div>
-            );
-          })}
+            )}
 
-          <div ref={messagesEndRef} />
+          </div>
+
+          {/* ============================================
+              MESSAGE INPUT
+          ============================================ */}
+
+          <div
+            className="
+              border-t
+              border-gray-200
+              bg-white
+              p-4
+            "
+          >
+
+            <div className="flex items-end gap-3">
+
+              <textarea
+                value={newMessage}
+                onChange={(event) =>
+                  setNewMessage(
+                    event.target.value
+                  )
+                }
+                onKeyDown={handleKeyDown}
+                placeholder="Type your message..."
+                rows={2}
+                disabled={sending}
+                className="
+                  min-h-[52px]
+                  flex-1
+                  resize-none
+                  rounded-xl
+                  border
+                  border-gray-300
+                  bg-white
+                  px-4
+                  py-3
+                  text-sm
+                  text-gray-900
+                  outline-none
+                  transition
+                  placeholder:text-gray-400
+                  focus:border-emerald-500
+                  focus:ring-2
+                  focus:ring-emerald-100
+                  disabled:bg-gray-100
+                "
+              />
+
+              <button
+                type="button"
+                onClick={handleSendMessage}
+                disabled={
+                  sending ||
+                  !newMessage.trim()
+                }
+                className="
+                  flex
+                  h-[52px]
+                  w-[52px]
+                  shrink-0
+                  items-center
+                  justify-center
+                  rounded-xl
+                  bg-emerald-600
+                  text-white
+                  transition
+                  hover:bg-emerald-700
+                  disabled:cursor-not-allowed
+                  disabled:opacity-50
+                "
+              >
+                {sending ? (
+                  <Loader2
+                    size={20}
+                    className="animate-spin"
+                  />
+                ) : (
+                  <Send size={20} />
+                )}
+              </button>
+
+            </div>
+
+            <p className="mt-2 text-xs text-gray-400">
+              Press Enter to send. Use Shift + Enter for a new line.
+            </p>
+
+          </div>
 
         </div>
 
-        {/* SEND MESSAGE */}
-
-        <form
-          onSubmit={handleSendMessage}
-          className="flex items-end gap-3 border-t border-gray-200 bg-white p-4"
-        >
-
-          <textarea
-            value={messageText}
-            onChange={(event) =>
-              setMessageText(event.target.value)
-            }
-            rows={2}
-            placeholder="Type a message..."
-            className="
-              min-h-[48px]
-              flex-1
-              resize-none
-              rounded-xl
-              border
-              border-gray-300
-              px-4
-              py-3
-              text-sm
-              text-gray-900
-              outline-none
-              transition
-              focus:border-emerald-500
-              focus:ring-2
-              focus:ring-emerald-100
-            "
-          />
-
-          <button
-            type="submit"
-            disabled={
-              sending ||
-              !messageText.trim()
-            }
-            className="
-              flex
-              h-12
-              w-12
-              shrink-0
-              items-center
-              justify-center
-              rounded-xl
-              bg-emerald-600
-              text-white
-              transition
-              hover:bg-emerald-700
-              disabled:cursor-not-allowed
-              disabled:opacity-50
-            "
-          >
-            <Send size={19} />
-          </button>
-
-        </form>
-
       </div>
-
     </DashboardLayout>
   );
 }

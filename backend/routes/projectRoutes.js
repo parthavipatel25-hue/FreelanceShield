@@ -21,9 +21,9 @@ const {
 router.post("/", createProject);
 
 // ============================================
-// GET ALL AVAILABLE PROJECTS
-// Used by freelancers to browse client projects
+// GET ALL PROJECTS
 // ============================================
+// Used by freelancers to browse all projects
 
 router.get("/", getAllProjects);
 
@@ -31,45 +31,63 @@ router.get("/", getAllProjects);
 // GET CLIENT PROJECTS
 // ============================================
 
-router.get("/client/:user_id", getClientProjects);
+router.get(
+  "/client/:user_id",
+  getClientProjects
+);
 
 // ============================================
 // SEARCH & FILTER PROJECTS
-// Week 10 - Search & Filters
 // ============================================
 
-router.get("/search", searchProjects);
+router.get(
+  "/search",
+  searchProjects
+);
 
 // ============================================
 // UPDATE PROJECT PROGRESS
-// Freelancer updates project progress
 // ============================================
 
-router.put("/:id/progress", updateProjectProgress);
+router.put(
+  "/:id/progress",
+  updateProjectProgress
+);
 
 // ============================================
 // COMPLETE PROJECT
-// Freelancer marks project as completed
 // ============================================
 
-router.put("/:id/complete", completeProject);
+router.put(
+  "/:id/complete",
+  completeProject
+);
 
 // ============================================
 // GET SINGLE PROJECT
 // ============================================
 
-router.get("/:id", getProjectById);
+router.get(
+  "/:id",
+  getProjectById
+);
 
 // ============================================
 // UPDATE PROJECT
 // ============================================
 
-router.put("/:id", updateProject);
+router.put(
+  "/:id",
+  updateProject
+);
 
 // ============================================
 // DELETE PROJECT
 // ============================================
 
-router.delete("/:id", deleteProject);
+router.delete(
+  "/:id",
+  deleteProject
+);
 
 module.exports = router;

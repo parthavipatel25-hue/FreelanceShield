@@ -2,12 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+
 import {
   BriefcaseBusiness,
   CalendarDays,
   DollarSign,
   Clock,
   ArrowLeft,
+  MessageCircle,
+  Loader2,
 } from "lucide-react";
 
 interface Project {
@@ -22,6 +25,7 @@ interface Project {
   deadline: string;
   status?: string;
   created_at?: string;
+  freelancer_id?: number | null;
 }
 
 interface User {
@@ -34,14 +38,45 @@ interface User {
 export default function MyProjectsPage() {
   const router = useRouter();
 
+  // ============================================
+  // USER
+  // ============================================
+
   const [user, setUser] = useState<User | null>(null);
+
+  // ============================================
+  // PROJECTS
+  // ============================================
+
   const [projects, setProjects] = useState<Project[]>([]);
+
+  // ============================================
+  // LOADING
+  // ============================================
+
   const [loading, setLoading] = useState(true);
+
+  // ============================================
+  // ERROR
+  // ============================================
+
   const [error, setError] = useState("");
+
+  // ============================================
+  // DELETE LOADING
+  // ============================================
+
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   // ============================================
-  // POST PROJECT PAGE
+  // MESSAGE LOADING
+  // ============================================
+
+  const [messagingProjectId, setMessagingProjectId] =
+    useState<number | null>(null);
+
+  // ============================================
+  // GO TO CREATE PROJECT
   // ============================================
 
   const goToCreateProject = () => {
@@ -49,7 +84,7 @@ export default function MyProjectsPage() {
   };
 
   // ============================================
-  // GET LOGGED-IN USER
+  // CHECK LOGGED-IN USER
   // ============================================
 
   useEffect(() => {
@@ -61,7 +96,7 @@ export default function MyProjectsPage() {
     }
 
     try {
-      const loggedInUser = JSON.parse(storedUser);
+      const loggedInUser: User = JSON.parse(storedUser);
 
       if (loggedInUser.role !== "client") {
         router.push("/login");
@@ -70,9 +105,11 @@ export default function MyProjectsPage() {
 
       setUser(loggedInUser);
     } catch (error) {
-      console.error("Invalid user data:", error);
+      console.error("INVALID USER DATA:", error);
 
       localStorage.removeItem("user");
+      localStorage.removeItem("token");
+
       router.push("/login");
     }
   }, [router]);
@@ -82,7 +119,9 @@ export default function MyProjectsPage() {
   // ============================================
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      return;
+    }
 
     const fetchProjects = async () => {
       try {
@@ -90,10 +129,16 @@ export default function MyProjectsPage() {
         setError("");
 
         const response = await fetch(
-          `http://localhost:5000/api/projects/client/${user.id}`
+          `http://localhost:5000/api/projects/client/${user.id}`,
+          {
+            method: "GET",
+            cache: "no-store",
+          }
         );
 
         const data = await response.json();
+
+        console.log("CLIENT PROJECTS RESPONSE:", data);
 
         if (!response.ok || !data.success) {
           throw new Error(
@@ -101,7 +146,11 @@ export default function MyProjectsPage() {
           );
         }
 
-        setProjects(data.projects || []);
+        setProjects(
+          Array.isArray(data.projects)
+            ? data.projects
+            : []
+        );
       } catch (error) {
         console.error("FETCH PROJECTS ERROR:", error);
 
@@ -119,10 +168,105 @@ export default function MyProjectsPage() {
   }, [user]);
 
   // ============================================
+  // START / OPEN CONVERSATION
+  // ============================================
+
+  const handleMessageFreelancer = async (
+    project: Project
+  ) => {
+    if (!user) {
+      return;
+    }
+
+    // Freelancer must be assigned first
+    if (!project.freelancer_id) {
+      setError(
+        "No freelancer has been assigned to this project yet."
+      );
+      return;
+    }
+
+    try {
+      setMessagingProjectId(project.id);
+      setError("");
+
+      // ========================================
+      // CREATE OR GET CONVERSATION
+      // ========================================
+
+      const response = await fetch(
+        "http://localhost:5000/api/messages/conversations",
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json",
+          },
+
+          body: JSON.stringify({
+            project_id: project.id,
+            user_id: user.id,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      console.log(
+        "CREATE/GET CONVERSATION RESPONSE:",
+        data
+      );
+
+      if (!response.ok || !data.success) {
+        throw new Error(
+          data.message ||
+            "Unable to start conversation."
+        );
+      }
+
+      // ========================================
+      // GET CONVERSATION ID
+      // ========================================
+
+      const conversationId =
+        data.conversation?.id;
+
+      if (!conversationId) {
+        throw new Error(
+          "Conversation was created, but conversation ID was not returned."
+        );
+      }
+
+      // ========================================
+      // OPEN CHAT
+      // ========================================
+
+      router.push(
+        `/client/messages/${conversationId}`
+      );
+    } catch (error) {
+      console.error(
+        "START CONVERSATION ERROR:",
+        error
+      );
+
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Unable to start conversation."
+      );
+    } finally {
+      setMessagingProjectId(null);
+    }
+  };
+
+  // ============================================
   // DELETE PROJECT
   // ============================================
 
-  const handleDelete = async (projectId: number) => {
+  const handleDelete = async (
+    projectId: number
+  ) => {
     const confirmed = window.confirm(
       "Are you sure you want to delete this project?"
     );
@@ -144,20 +288,25 @@ export default function MyProjectsPage() {
 
       const data = await response.json();
 
+      console.log("DELETE PROJECT RESPONSE:", data);
+
       if (!response.ok || !data.success) {
         throw new Error(
           data.message || "Failed to delete project."
         );
       }
 
-      // Remove deleted project from the screen
-      setProjects((currentProjects) =>
-        currentProjects.filter(
+      // Remove deleted project from UI
+      setProjects((previousProjects) =>
+        previousProjects.filter(
           (project) => project.id !== projectId
         )
       );
     } catch (error) {
-      console.error("DELETE PROJECT ERROR:", error);
+      console.error(
+        "DELETE PROJECT ERROR:",
+        error
+      );
 
       setError(
         error instanceof Error
@@ -171,10 +320,11 @@ export default function MyProjectsPage() {
 
   // ============================================
   // FORMAT DEADLINE
-  // Avoid hydration mismatch
   // ============================================
 
-  const formatDeadline = (deadline: string) => {
+  const formatDeadline = (
+    deadline: string
+  ) => {
     if (!deadline) {
       return "N/A";
     }
@@ -195,14 +345,25 @@ export default function MyProjectsPage() {
   };
 
   // ============================================
-  // LOADING
+  // LOADING SCREEN
   // ============================================
 
   if (!user || loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-100">
         <div className="text-center">
-          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-emerald-200 border-t-emerald-600" />
+          <div
+            className="
+              mx-auto
+              h-10
+              w-10
+              animate-spin
+              rounded-full
+              border-4
+              border-emerald-200
+              border-t-emerald-600
+            "
+          />
 
           <p className="mt-4 text-gray-600">
             Loading your projects...
@@ -225,11 +386,13 @@ export default function MyProjectsPage() {
 
       <div className="mb-6">
 
-        {/* BACK TO DASHBOARD */}
+        {/* BACK */}
 
         <button
           type="button"
-          onClick={() => router.push("/client")}
+          onClick={() =>
+            router.push("/client")
+          }
           className="
             mb-4
             flex
@@ -243,15 +406,31 @@ export default function MyProjectsPage() {
           "
         >
           <ArrowLeft size={18} />
+
           Back to Dashboard
         </button>
 
-        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+        {/* HEADER */}
 
-          {/* PAGE TITLE */}
-
+        <div
+          className="
+            flex
+            flex-col
+            justify-between
+            gap-4
+            sm:flex-row
+            sm:items-center
+          "
+        >
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
+            <h1
+              className="
+                text-2xl
+                font-bold
+                text-gray-900
+                sm:text-3xl
+              "
+            >
               My Projects
             </h1>
 
@@ -260,12 +439,26 @@ export default function MyProjectsPage() {
             </p>
           </div>
 
-          {/* ====================================
-              POST PROJECT BUTTON
-              ONLY SHOW WHEN PROJECTS EXIST
-          ==================================== */}
-
-
+          {projects.length > 0 && (
+            <button
+              type="button"
+              onClick={goToCreateProject}
+              className="
+                rounded-xl
+                bg-emerald-600
+                px-5
+                py-3
+                text-sm
+                font-semibold
+                text-white
+                shadow-sm
+                transition
+                hover:bg-emerald-700
+              "
+            >
+              + Post New Project
+            </button>
+          )}
         </div>
       </div>
 
@@ -274,7 +467,18 @@ export default function MyProjectsPage() {
       ======================================== */}
 
       {error && (
-        <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-red-600">
+        <div
+          className="
+            mb-6
+            rounded-xl
+            border
+            border-red-200
+            bg-red-50
+            p-4
+            text-sm
+            text-red-600
+          "
+        >
           {error}
         </div>
       )}
@@ -295,9 +499,6 @@ export default function MyProjectsPage() {
             shadow-sm
           "
         >
-
-          {/* ICON */}
-
           <div
             className="
               mx-auto
@@ -316,23 +517,29 @@ export default function MyProjectsPage() {
             />
           </div>
 
-          {/* TITLE */}
-
-          <h2 className="mt-5 text-xl font-semibold text-gray-900">
+          <h2
+            className="
+              mt-5
+              text-xl
+              font-semibold
+              text-gray-900
+            "
+          >
             No projects yet
           </h2>
 
-          {/* DESCRIPTION */}
-
-          <p className="mx-auto mt-2 max-w-md text-gray-500">
-            You haven't posted any projects yet. Create your
-            first project to start finding freelancers.
+          <p
+            className="
+              mx-auto
+              mt-2
+              max-w-md
+              text-gray-500
+            "
+          >
+            You haven't posted any projects yet.
+            Create your first project to start
+            finding freelancers.
           </p>
-
-          {/* ====================================
-              FIRST PROJECT BUTTON
-              GOES TO /client/create-project
-          ==================================== */}
 
           <button
             type="button"
@@ -351,7 +558,6 @@ export default function MyProjectsPage() {
           >
             Post Your First Project
           </button>
-
         </div>
       )}
 
@@ -363,7 +569,6 @@ export default function MyProjectsPage() {
         <div className="space-y-5">
 
           {projects.map((project) => (
-
             <div
               key={project.id}
               className="
@@ -383,15 +588,26 @@ export default function MyProjectsPage() {
                   PROJECT HEADER
               ================================== */}
 
-              <div className="flex flex-col justify-between gap-4 lg:flex-row">
-
-                {/* PROJECT TITLE */}
-
+              <div
+                className="
+                  flex
+                  flex-col
+                  justify-between
+                  gap-4
+                  lg:flex-row
+                "
+              >
                 <div className="min-w-0">
 
                   <div className="flex flex-wrap items-center gap-3">
 
-                    <h2 className="text-xl font-bold text-gray-900">
+                    <h2
+                      className="
+                        text-xl
+                        font-bold
+                        text-gray-900
+                      "
+                    >
                       {project.title}
                     </h2>
 
@@ -403,6 +619,7 @@ export default function MyProjectsPage() {
                         py-1
                         text-xs
                         font-semibold
+                        capitalize
                         text-emerald-700
                       "
                     >
@@ -411,17 +628,84 @@ export default function MyProjectsPage() {
 
                   </div>
 
-                  <p className="mt-2 text-sm font-medium text-emerald-600">
+                  <p
+                    className="
+                      mt-2
+                      text-sm
+                      font-medium
+                      text-emerald-600
+                    "
+                  >
                     {project.category}
                   </p>
-
                 </div>
 
                 {/* ==================================
-                    EDIT + DELETE BUTTONS
+                    ACTIONS
                 ================================== */}
 
-                <div className="flex shrink-0 gap-3">
+                <div
+                  className="
+                    flex
+                    shrink-0
+                    flex-wrap
+                    gap-3
+                  "
+                >
+
+                  {/* MESSAGE */}
+
+                  {project.freelancer_id && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleMessageFreelancer(
+                          project
+                        )
+                      }
+                      disabled={
+                        messagingProjectId ===
+                        project.id
+                      }
+                      className="
+                        flex
+                        items-center
+                        justify-center
+                        gap-2
+                        rounded-lg
+                        bg-emerald-600
+                        px-4
+                        py-2
+                        text-sm
+                        font-semibold
+                        text-white
+                        transition
+                        hover:bg-emerald-700
+                        disabled:cursor-not-allowed
+                        disabled:opacity-60
+                      "
+                    >
+                      {messagingProjectId ===
+                      project.id ? (
+                        <>
+                          <Loader2
+                            size={17}
+                            className="animate-spin"
+                          />
+
+                          Opening...
+                        </>
+                      ) : (
+                        <>
+                          <MessageCircle
+                            size={17}
+                          />
+
+                          Message
+                        </>
+                      )}
+                    </button>
+                  )}
 
                   {/* EDIT */}
 
@@ -453,8 +737,12 @@ export default function MyProjectsPage() {
 
                   <button
                     type="button"
-                    onClick={() => handleDelete(project.id)}
-                    disabled={deletingId === project.id}
+                    onClick={() =>
+                      handleDelete(project.id)
+                    }
+                    disabled={
+                      deletingId === project.id
+                    }
                     className="
                       rounded-lg
                       border
@@ -474,16 +762,80 @@ export default function MyProjectsPage() {
                       ? "Deleting..."
                       : "Delete"}
                   </button>
-
                 </div>
-
               </div>
+
+              {/* ==================================
+                  ASSIGNED FREELANCER
+              ================================== */}
+
+              {project.freelancer_id && (
+                <div
+                  className="
+                    mt-5
+                    flex
+                    items-center
+                    gap-3
+                    rounded-xl
+                    border
+                    border-emerald-100
+                    bg-emerald-50
+                    px-4
+                    py-3
+                  "
+                >
+                  <div
+                    className="
+                      flex
+                      h-9
+                      w-9
+                      items-center
+                      justify-center
+                      rounded-full
+                      bg-emerald-100
+                    "
+                  >
+                    <MessageCircle
+                      size={18}
+                      className="text-emerald-600"
+                    />
+                  </div>
+
+                  <div>
+                    <p
+                      className="
+                        text-sm
+                        font-semibold
+                        text-emerald-800
+                      "
+                    >
+                      Freelancer assigned
+                    </p>
+
+                    <p
+                      className="
+                        text-xs
+                        text-emerald-700
+                      "
+                    >
+                      You can now communicate with
+                      the freelancer through messages.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* ==================================
                   DESCRIPTION
               ================================== */}
 
-              <p className="mt-5 leading-7 text-gray-600">
+              <p
+                className="
+                  mt-5
+                  leading-7
+                  text-gray-600
+                "
+              >
                 {project.description}
               </p>
 
@@ -507,7 +859,6 @@ export default function MyProjectsPage() {
                 {/* BUDGET */}
 
                 <div className="flex items-center gap-3">
-
                   <div
                     className="
                       flex
@@ -531,16 +882,17 @@ export default function MyProjectsPage() {
                     </p>
 
                     <p className="font-semibold text-gray-900">
-                      ${Number(project.budget).toFixed(2)}
+                      $
+                      {Number(
+                        project.budget
+                      ).toFixed(2)}
                     </p>
                   </div>
-
                 </div>
 
                 {/* DEADLINE */}
 
                 <div className="flex items-center gap-3">
-
                   <div
                     className="
                       flex
@@ -564,16 +916,16 @@ export default function MyProjectsPage() {
                     </p>
 
                     <p className="font-semibold text-gray-900">
-                      {formatDeadline(project.deadline)}
+                      {formatDeadline(
+                        project.deadline
+                      )}
                     </p>
                   </div>
-
                 </div>
 
                 {/* BUDGET TYPE */}
 
                 <div className="flex items-center gap-3">
-
                   <div
                     className="
                       flex
@@ -596,13 +948,17 @@ export default function MyProjectsPage() {
                       Budget Type
                     </p>
 
-                    <p className="font-semibold capitalize text-gray-900">
+                    <p
+                      className="
+                        font-semibold
+                        capitalize
+                        text-gray-900
+                      "
+                    >
                       {project.budget_type}
                     </p>
                   </div>
-
                 </div>
-
               </div>
 
               {/* ==================================
@@ -610,14 +966,26 @@ export default function MyProjectsPage() {
               ================================== */}
 
               {project.skills && (
-                <div className="mt-5 border-t border-gray-100 pt-5">
-
-                  <p className="mb-3 text-sm font-semibold text-gray-700">
+                <div
+                  className="
+                    mt-5
+                    border-t
+                    border-gray-100
+                    pt-5
+                  "
+                >
+                  <p
+                    className="
+                      mb-3
+                      text-sm
+                      font-semibold
+                      text-gray-700
+                    "
+                  >
                     Required Skills
                   </p>
 
                   <div className="flex flex-wrap gap-2">
-
                     {project.skills
                       .split(",")
                       .map((skill) => (
@@ -636,19 +1004,13 @@ export default function MyProjectsPage() {
                           {skill.trim()}
                         </span>
                       ))}
-
                   </div>
-
                 </div>
               )}
-
             </div>
-
           ))}
-
         </div>
       )}
-
     </div>
   );
 }
