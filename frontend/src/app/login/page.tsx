@@ -5,7 +5,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
-
   const router = useRouter();
 
   const [form, setForm] = useState({
@@ -14,7 +13,19 @@ export default function LoginPage() {
   });
 
   const [message, setMessage] = useState("");
+  const [remainingAttempts, setRemainingAttempts] =
+    useState<number | null>(null);
 
+  const [failedAttempts, setFailedAttempts] =
+    useState<number | null>(null);
+
+  const [riskCreated, setRiskCreated] = useState(false);
+
+  const [loading, setLoading] = useState(false);
+
+  // ==================================================
+  // HANDLE INPUT CHANGE
+  // ==================================================
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement>
@@ -23,18 +34,28 @@ export default function LoginPage() {
       ...form,
       [e.target.name]: e.target.value,
     });
+
+    // Only clear the old message while typing.
+    // The backend will provide the new attempt count
+    // when Login is pressed.
+    setMessage("");
+    setRiskCreated(false);
   };
 
+  // ==================================================
+  // HANDLE LOGIN
+  // ==================================================
 
   const handleSubmit = async (
     e: React.FormEvent
   ) => {
-
     e.preventDefault();
 
+    setMessage("");
+    setRiskCreated(false);
+    setLoading(true);
 
     try {
-
       const response = await fetch(
         "http://localhost:5000/api/auth/login",
         {
@@ -46,348 +67,401 @@ export default function LoginPage() {
         }
       );
 
-
       const data = await response.json();
 
+      console.log("LOGIN RESPONSE:", data);
+
+      // ==================================================
+      // LOGIN FAILED
+      // ==================================================
 
       if (!response.ok) {
         setMessage(
-          data.message || "Login failed"
+          data.message || "Login failed."
         );
+
+        // IMPORTANT:
+        // Get the actual values returned by backend.
+        if (
+          typeof data.failedAttempts === "number"
+        ) {
+          setFailedAttempts(
+            data.failedAttempts
+          );
+        }
+
+        if (
+          typeof data.remainingAttempts ===
+          "number"
+        ) {
+          setRemainingAttempts(
+            data.remainingAttempts
+          );
+        }
+
+        setRiskCreated(
+          data.riskCreated === true
+        );
+
         return;
       }
 
+      // ==================================================
+      // LOGIN SUCCESS
+      // ==================================================
+
+      setFailedAttempts(null);
+      setRemainingAttempts(null);
+      setMessage("");
 
       localStorage.setItem(
         "user",
         JSON.stringify(data.user)
       );
 
-if (data.user.role === "admin") {
-
-  router.push("/admin");
-
-}
-else if (data.user.role === "client") {
-
-  router.push("/client");
-
-}
-else {
-
-  router.push("/freelancer");
-
-}
-
-
-    } catch {
-
-      setMessage(
-        "Server error. Please try again."
+      localStorage.setItem(
+        "token",
+        data.token
       );
 
-    }
+      // ==================================================
+      // FORCE PASSWORD RESET
+      // ==================================================
 
+      if (
+        data.forcePasswordReset === true
+      ) {
+        router.push(
+          "/reset-password?force=true"
+        );
+
+        return;
+      }
+
+      // ==================================================
+      // ROLE REDIRECT
+      // ==================================================
+
+      if (data.user.role === "admin") {
+        router.push("/admin");
+      } else if (
+        data.user.role === "client"
+      ) {
+        router.push("/client");
+      } else {
+        router.push("/freelancer");
+      }
+    } catch (error) {
+      console.error(
+        "LOGIN FRONTEND ERROR:",
+        error
+      );
+
+      setMessage(
+        "Unable to connect to the server. Please try again."
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
-
-
   return (
+    <div className="flex min-h-screen bg-gray-50">
 
-    <div className="min-h-screen flex bg-gray-50">
-
-
-      {/* Left Branding Section */}
+      {/* ==================================================
+          LEFT BRANDING SECTION
+      ================================================== */}
 
       <div
         className="
-        hidden md:flex
-        w-1/2
-        bg-gradient-to-br
-        from-black
-        via-gray-900
-        to-green-900
-        text-white
-        flex-col
-        justify-center
-        px-16
+          hidden
+          w-1/2
+          flex-col
+          justify-center
+          bg-gradient-to-br
+          from-black
+          via-gray-900
+          to-green-900
+          px-16
+          text-white
+          md:flex
         "
       >
-
-
         <h1 className="text-5xl font-bold leading-tight">
-
           Connect.
           <br />
-
           Collaborate.
           <br />
 
           <span className="text-green-400">
             Create.
           </span>
-
         </h1>
 
-
-
-        <p className="mt-6 text-gray-300 text-lg max-w-md">
-
+        <p className="mt-6 max-w-md text-lg text-gray-300">
           Welcome back. Continue building amazing
           projects with talented people.
-
         </p>
-
-
 
         <div className="mt-10 flex gap-4">
 
-
-          <div className="bg-white/10 p-4 rounded-xl">
-
-            <h3 className="font-semibold text-xl">
+          <div className="rounded-xl bg-white/10 p-4">
+            <h3 className="text-xl font-semibold">
               10K+
             </h3>
 
             <p className="text-sm text-gray-400">
               Freelancers
             </p>
-
           </div>
 
-
-
-          <div className="bg-white/10 p-4 rounded-xl">
-
-            <h3 className="font-semibold text-xl">
+          <div className="rounded-xl bg-white/10 p-4">
+            <h3 className="text-xl font-semibold">
               5K+
             </h3>
 
             <p className="text-sm text-gray-400">
               Projects
             </p>
-
           </div>
 
-
         </div>
-
-
       </div>
 
+      {/* ==================================================
+          LOGIN SECTION
+      ================================================== */}
 
-
-
-      {/* Login Form */}
-
-      <div className="w-full md:w-1/2 flex items-center justify-center">
-
+      <div className="flex w-full items-center justify-center md:w-1/2">
 
         <div className="w-full max-w-md px-8">
 
+          {/* HEADER */}
 
           <div className="mb-8">
 
-
             <h2 className="text-4xl font-bold text-gray-900">
-
               Welcome Back 👋
-
             </h2>
 
-
-            <p className="text-gray-500 mt-2">
-
+            <p className="mt-2 text-gray-500">
               Login to continue your journey
-
             </p>
-
 
           </div>
 
+          {/* ==================================================
+              SECURITY MESSAGE
+          ================================================== */}
 
+          {message && (
+            <div
+              className={`
+                mb-5
+                rounded-xl
+                border
+                p-4
+                text-sm
 
-          {
-            message && (
+                ${
+                  remainingAttempts !== null &&
+                  remainingAttempts > 0
+                    ? "border-orange-200 bg-orange-50 text-orange-700"
+                    : "border-red-200 bg-red-50 text-red-700"
+                }
+              `}
+            >
 
-              <p className="text-red-500 mb-4">
-
+              <p className="font-medium">
                 {message}
-
               </p>
 
-            )
-          }
+              {/* ACTUAL FAILED ATTEMPTS */}
 
+              {failedAttempts !== null && (
+                <p className="mt-2 font-semibold">
+                  Failed attempts:
+                  {" "}
+                  {failedAttempts}
+                </p>
+              )}
 
+              {/* REMAINING ATTEMPTS */}
 
+              {remainingAttempts !== null &&
+                remainingAttempts > 0 && (
+                  <p className="mt-1 font-semibold">
+                    {remainingAttempts}{" "}
+                    {remainingAttempts === 1
+                      ? "attempt"
+                      : "attempts"}{" "}
+                    remaining.
+                  </p>
+                )}
+
+              {/* THRESHOLD REACHED */}
+
+              {remainingAttempts === 0 && (
+                <p className="mt-2 font-semibold text-red-700">
+                  Maximum failed attempts reached.
+                  The activity has been flagged for
+                  security review.
+                </p>
+              )}
+
+              {/* RISK CREATED */}
+
+              {riskCreated && (
+                <p className="mt-2 font-semibold text-red-700">
+                  Security risk created for this
+                  repeated failed login activity.
+                </p>
+              )}
+
+            </div>
+          )}
+
+          {/* ==================================================
+              LOGIN FORM
+          ================================================== */}
 
           <form
             onSubmit={handleSubmit}
             className="space-y-5"
           >
 
-
+            {/* EMAIL */}
 
             <div>
 
-              <label className="text-sm font-medium">
-
+              <label className="text-sm font-medium text-gray-700">
                 Email
-
               </label>
 
-
               <input
-
                 type="email"
-
                 name="email"
-
                 value={form.email}
-
                 onChange={handleChange}
-
                 placeholder="example@gmail.com"
-
+                required
                 className="
-                mt-2
-                w-full
-                px-4
-                py-3
-                border
-                border-gray-300
-                rounded-xl
-                focus:outline-none
-                focus:ring-2
-                focus:ring-green-600
+                  mt-2
+                  w-full
+                  rounded-xl
+                  border
+                  border-gray-300
+                  px-4
+                  py-3
+                  outline-none
+                  focus:border-green-600
+                  focus:ring-2
+                  focus:ring-green-100
                 "
-
               />
-
 
             </div>
 
-
-
-
+            {/* PASSWORD */}
 
             <div>
 
-              <label className="text-sm font-medium">
+              <div className="flex items-center justify-between">
 
-                Password
+                <label className="text-sm font-medium text-gray-700">
+                  Password
+                </label>
 
-              </label>
 
+              </div>
 
               <input
-
                 type="password"
-
                 name="password"
-
                 value={form.password}
-
                 onChange={handleChange}
-
                 placeholder="********"
-
+                required
                 className="
-                mt-2
-                w-full
-                px-4
-                py-3
-                border
-                border-gray-300
-                rounded-xl
-                focus:outline-none
-                focus:ring-2
-                focus:ring-green-600
+                  mt-2
+                  w-full
+                  rounded-xl
+                  border
+                  border-gray-300
+                  px-4
+                  py-3
+                  outline-none
+                  focus:border-green-600
+                  focus:ring-2
+                  focus:ring-green-100
                 "
-
               />
 
+              <Link
+                  href="/forgot-password"
+                  className="
+                    text-sm
+                    font-semibold
+                    text-green-600
+                    hover:text-green-700
+                  "
+                >
+                  Forgot Password?
+                </Link>
 
             </div>
+            
 
-
-
-
-       
-
-
-
-
+            {/* LOGIN BUTTON */}
 
             <button
-
               type="submit"
-
+              disabled={loading}
               className="
-              w-full
-              bg-green-600
-              hover:bg-green-700
-              text-white
-              py-3
-              rounded-xl
-              font-semibold
-              transition
-              hover:scale-[1.02]
+                w-full
+                rounded-xl
+                bg-green-600
+                py-3
+                font-semibold
+                text-white
+                transition
+                hover:bg-green-700
+                hover:scale-[1.02]
+                disabled:cursor-not-allowed
+                disabled:opacity-50
               "
-
             >
-
-              Login
-
+              {loading
+                ? "Logging in..."
+                : "Login"}
             </button>
-
-
-
 
           </form>
 
+          {/* REGISTER */}
 
-
-
-
-          <p className="text-center mt-8 text-gray-500">
-
+          <p className="mt-8 text-center text-gray-500">
 
             Don't have an account?
 
-
             <Link
-
               href="/register"
-
               className="
-              text-green-600
-              font-semibold
-              ml-2
+                ml-2
+                font-semibold
+                text-green-600
+                hover:text-green-700
               "
-
             >
-
               Create account
-
             </Link>
-
 
           </p>
 
-
-
-
         </div>
-
 
       </div>
 
-
-
     </div>
-
   );
-
 }

@@ -1,6 +1,123 @@
 const pool = require("../config/db");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const nodemailer = require("nodemailer");
+
+// ======================================================
+// SECURITY CONFIGURATION
+// ======================================================
+
+const FAILED_LOGIN_THRESHOLD = 3;
+const FAILED_LOGIN_WINDOW_MINUTES = 15;
+
+// ======================================================
+// EMAIL CONFIGURATION
+// ======================================================
+
+const emailTransporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
+
+// ======================================================
+// HELPER: SEND SECURITY ALERT EMAIL
+// ======================================================
+
+const sendSecurityAlertEmail = async ({
+  email,
+  fullname,
+  failedAttempts,
+}) => {
+  try {
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+      console.error(
+        "EMAIL ERROR: EMAIL_USER or EMAIL_PASS is missing in .env"
+      );
+
+      return false;
+    }
+
+    await emailTransporter.sendMail({
+      from: `"FreelanceShield Security" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: "FreelanceShield Security Alert - Failed Login Attempts",
+
+      html: `
+        <div style="
+          font-family: Arial, sans-serif;
+          max-width: 600px;
+          margin: auto;
+          padding: 30px;
+          border: 1px solid #e5e7eb;
+          border-radius: 12px;
+        ">
+
+          <h2 style="color: #111827;">
+            FreelanceShield Security Alert
+          </h2>
+
+          <p>
+            Hello <strong>${fullname || "User"}</strong>,
+          </p>
+
+          <p>
+            We detected multiple unsuccessful login attempts
+            on your FreelanceShield account.
+          </p>
+
+          <div style="
+            background: #fff7ed;
+            border: 1px solid #fed7aa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+          ">
+
+            <strong>Failed login attempts:</strong>
+            ${failedAttempts}
+
+            <br />
+
+            <strong>Security window:</strong>
+            ${FAILED_LOGIN_WINDOW_MINUTES} minutes
+
+          </div>
+
+          <p>
+            If these attempts were made by you, you can safely
+            ignore this message.
+          </p>
+
+          <p>
+            If you did not attempt to log in, we recommend
+            changing your password immediately.
+          </p>
+
+          <p>
+            <strong>FreelanceShield Security Team</strong>
+          </p>
+
+        </div>
+      `,
+    });
+
+    console.log(
+      `SECURITY EMAIL SENT TO: ${email}`
+    );
+
+    return true;
+  } catch (error) {
+    console.error(
+      "SEND SECURITY EMAIL ERROR:",
+      error
+    );
+
+    return false;
+  }
+};
 
 // ======================================================
 // HELPER: GET CLIENT IP ADDRESS
@@ -13,11 +130,7 @@ const getClientIp = (req) => {
     return forwarded.split(",")[0].trim();
   }
 
-  return (
-    req.socket?.remoteAddress ||
-    req.ip ||
-    "Unknown"
-  );
+  return req.socket?.remoteAddress || req.ip || "Unknown";
 };
 
 // ======================================================
@@ -67,13 +180,7 @@ const createActivityLog = async ({
       ]
     );
 
-    console.log(
-      "ACTIVITY LOG CREATED:",
-      result.rows[0]
-    );
-
     return result.rows[0];
-
   } catch (error) {
     console.error(
       "CREATE ACTIVITY LOG ERROR:",
@@ -110,7 +217,16 @@ const createSecurityReport = async ({
         user_agent,
         status
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, 'open')
+      VALUES (
+        $1,
+        $2,
+        $3,
+        $4,
+        $5,
+        $6,
+        $7,
+        'open'
+      )
       RETURNING id
       `,
       [
@@ -124,16 +240,7 @@ const createSecurityReport = async ({
       ]
     );
 
-    const securityReportId =
-      result.rows[0].id;
-
-    console.log(
-      "SECURITY REPORT CREATED:",
-      securityReportId
-    );
-
-    return securityReportId;
-
+    return result.rows[0].id;
   } catch (error) {
     console.error(
       "CREATE SECURITY REPORT ERROR:",
@@ -195,13 +302,7 @@ const createRisk = async ({
       ]
     );
 
-    console.log(
-      "RISK CREATED:",
-      result.rows[0]
-    );
-
     return result.rows[0];
-
   } catch (error) {
     console.error(
       "CREATE RISK ERROR:",
@@ -209,6 +310,304 @@ const createRisk = async ({
     );
 
     return null;
+  }
+};
+
+// ======================================================
+// HELPER: GET RECENT FAILED LOGIN COUNT
+// ======================================================
+
+const getRecentFailedLoginCount = async ({
+  userId = null,
+  email,
+  ipAddress,
+}) => {
+  try {
+    let result;
+
+    if (userId) {
+      result = await pool.query(
+        `
+        SELECT COUNT(*) AS attempt_count
+        FROM security_reports
+        WHERE user_id = $1
+          AND event_type = 'failed_login'
+          AND created_at >=
+              CURRENT_TIMESTAMP -
+              INTERVAL '${FAILED_LOGIN_WINDOW_MINUTES} minutes'
+        `,
+        [userId]
+      );
+    } else {
+      result = await pool.query(
+        `
+        SELECT COUNT(*) AS attempt_count
+        FROM security_reports
+        WHERE attempted_email = $1
+          AND event_type = 'failed_login'
+          AND ip_address = $2
+          AND created_at >=
+              CURRENT_TIMESTAMP -
+              INTERVAL '${FAILED_LOGIN_WINDOW_MINUTES} minutes'
+        `,
+        [email, ipAddress]
+      );
+    }
+
+    return Number(
+      result.rows[0]?.attempt_count || 0
+    );
+  } catch (error) {
+    console.error(
+      "GET FAILED LOGIN COUNT ERROR:",
+      error
+    );
+
+    return 0;
+  }
+};
+
+// ======================================================
+// HELPER: CHECK EXISTING OPEN AUTHENTICATION RISK
+// ======================================================
+
+const checkExistingOpenRisk = async ({
+  userId = null,
+  email = null,
+}) => {
+  try {
+    let result;
+
+    if (userId) {
+      result = await pool.query(
+        `
+        SELECT id
+        FROM risks
+        WHERE user_id = $1
+          AND risk_type = 'Authentication'
+          AND status IN ('open', 'reviewed')
+        ORDER BY created_at DESC
+        LIMIT 1
+        `,
+        [userId]
+      );
+    } else {
+      result = await pool.query(
+        `
+        SELECT r.id
+        FROM risks r
+        INNER JOIN security_reports sr
+          ON r.security_report_id = sr.id
+        WHERE r.risk_type = 'Authentication'
+          AND r.status IN ('open', 'reviewed')
+          AND sr.attempted_email = $1
+        ORDER BY r.created_at DESC
+        LIMIT 1
+        `,
+        [email]
+      );
+    }
+
+    if (result.rows.length > 0) {
+      return result.rows[0].id;
+    }
+
+    return null;
+  } catch (error) {
+    console.error(
+      "CHECK EXISTING RISK ERROR:",
+      error
+    );
+
+    return null;
+  }
+};
+
+// ======================================================
+// HELPER: UPDATE USER FAILED ATTEMPT COUNTER
+// ======================================================
+
+const updateFailedAttemptCounter = async ({
+  userId,
+}) => {
+  try {
+    const result = await pool.query(
+      `
+      UPDATE users
+      SET
+        failed_login_attempts =
+          CASE
+            WHEN last_failed_login_at IS NULL
+              OR last_failed_login_at <
+                CURRENT_TIMESTAMP -
+                INTERVAL '${FAILED_LOGIN_WINDOW_MINUTES} minutes'
+            THEN 1
+
+            ELSE COALESCE(failed_login_attempts, 0) + 1
+          END,
+
+        last_failed_login_at = CURRENT_TIMESTAMP
+
+      WHERE id = $1
+
+      RETURNING
+        failed_login_attempts,
+        last_failed_login_at
+      `,
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      return {
+        count: 0,
+        lastFailedLoginAt: null,
+      };
+    }
+
+    return {
+      count: Number(
+        result.rows[0].failed_login_attempts || 0
+      ),
+      lastFailedLoginAt:
+        result.rows[0].last_failed_login_at,
+    };
+  } catch (error) {
+    console.error(
+      "UPDATE FAILED ATTEMPT COUNTER ERROR:",
+      error
+    );
+
+    return {
+      count: 0,
+      lastFailedLoginAt: null,
+    };
+  }
+};
+
+// ======================================================
+// HELPER: RESET USER FAILED ATTEMPTS
+// ======================================================
+
+const resetFailedAttemptCounter = async ({
+  userId,
+}) => {
+  try {
+    await pool.query(
+      `
+      UPDATE users
+      SET
+        failed_login_attempts = 0,
+        last_failed_login_at = NULL
+      WHERE id = $1
+      `,
+      [userId]
+    );
+  } catch (error) {
+    console.error(
+      "RESET FAILED ATTEMPT COUNTER ERROR:",
+      error
+    );
+  }
+};
+
+// ======================================================
+// HELPER: HANDLE REPEATED LOGIN RISK
+// ======================================================
+
+const handleRepeatedLoginRisk = async ({
+  userId = null,
+  email,
+  ipAddress,
+  securityReportId,
+  userName = null,
+}) => {
+  try {
+    const attemptCount =
+      await getRecentFailedLoginCount({
+        userId,
+        email,
+        ipAddress,
+      });
+
+    // Risk only at threshold
+    if (
+      attemptCount <
+      FAILED_LOGIN_THRESHOLD
+    ) {
+      return {
+        riskCreated: false,
+        attemptCount,
+      };
+    }
+
+    // Prevent duplicate risks
+    const existingRiskId =
+      await checkExistingOpenRisk({
+        userId,
+        email,
+      });
+
+    if (existingRiskId) {
+      return {
+        riskCreated: false,
+        existingRiskId,
+        attemptCount,
+      };
+    }
+
+    const risk = await createRisk({
+      userId,
+      securityReportId,
+      riskType: "Authentication",
+      title:
+        "Repeated Failed Login Attempts",
+
+      description: userId
+        ? `The account ${
+            userName || email
+          } experienced ${attemptCount} failed login attempts within ${FAILED_LOGIN_WINDOW_MINUTES} minutes. This may indicate repeated incorrect password attempts or suspicious authentication activity.`
+        : `The email address ${email} experienced ${attemptCount} failed login attempts from the IP address ${ipAddress} within ${FAILED_LOGIN_WINDOW_MINUTES} minutes.`,
+
+      severity: "high",
+
+      recommendedAction:
+        "Review the authentication activity, verify whether the attempts are legitimate, and take corrective action if suspicious activity is confirmed.",
+    });
+
+    if (!risk) {
+      return {
+        riskCreated: false,
+        attemptCount,
+      };
+    }
+
+    // ==================================================
+    // SEND EMAIL ONLY WHEN RISK IS CREATED
+    // ==================================================
+
+    if (userId && email) {
+      await sendSecurityAlertEmail({
+        email,
+        fullname: userName,
+        failedAttempts: attemptCount,
+      });
+    }
+
+    return {
+      riskCreated: true,
+      riskId: risk.id,
+      attemptCount,
+    };
+  } catch (error) {
+    console.error(
+      "HANDLE REPEATED LOGIN RISK ERROR:",
+      error
+    );
+
+    return {
+      riskCreated: false,
+      attemptCount: 0,
+    };
   }
 };
 
@@ -228,10 +627,6 @@ const register = async (req, res) => {
     const ipAddress = getClientIp(req);
     const userAgent = getUserAgent(req);
 
-    // --------------------------------------------------
-    // VALIDATE REQUIRED FIELDS
-    // --------------------------------------------------
-
     if (
       !fullname ||
       !email ||
@@ -245,9 +640,17 @@ const register = async (req, res) => {
       });
     }
 
-    // --------------------------------------------------
-    // PREVENT ADMIN REGISTRATION
-    // --------------------------------------------------
+    const allowedRoles = [
+      "freelancer",
+      "client",
+    ];
+
+    if (!allowedRoles.includes(role)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid role.",
+      });
+    }
 
     if (role === "admin") {
       return res.status(403).json({
@@ -257,119 +660,90 @@ const register = async (req, res) => {
       });
     }
 
-    // --------------------------------------------------
-    // RESERVED EMAIL
-    // --------------------------------------------------
-
     if (
       email.trim().toLowerCase() ===
       "support@freelanceshield.com"
     ) {
       return res.status(403).json({
         success: false,
-        message:
-          "This email is reserved.",
+        message: "This email is reserved.",
       });
     }
 
-    // --------------------------------------------------
-    // CHECK EXISTING USER
-    // --------------------------------------------------
-
-    const existingUser =
-      await pool.query(
-        `
-        SELECT id
-        FROM users
-        WHERE LOWER(email) = LOWER($1)
-        `,
-        [email.trim()]
-      );
+    const existingUser = await pool.query(
+      `
+      SELECT id
+      FROM users
+      WHERE LOWER(email) = LOWER($1)
+      `,
+      [email.trim()]
+    );
 
     if (existingUser.rows.length > 0) {
       return res.status(400).json({
         success: false,
-        message:
-          "Email already exists.",
+        message: "Email already exists.",
       });
     }
 
-    // --------------------------------------------------
-    // HASH PASSWORD
-    // --------------------------------------------------
-
     const hashedPassword =
-      await bcrypt.hash(
+      await bcrypt.hash(password, 10);
+
+    const result = await pool.query(
+      `
+      INSERT INTO users (
+        fullname,
+        email,
         password,
-        10
-      );
+        role,
+        account_status,
+        failed_login_attempts,
+        force_password_reset
+      )
+      VALUES (
+        $1,
+        $2,
+        $3,
+        $4,
+        'active',
+        0,
+        FALSE
+      )
+      RETURNING
+        id,
+        fullname,
+        email,
+        role,
+        account_status,
+        force_password_reset,
+        created_at
+      `,
+      [
+        fullname.trim(),
+        email.trim().toLowerCase(),
+        hashedPassword,
+        role,
+      ]
+    );
 
-    // --------------------------------------------------
-    // CREATE USER
-    // --------------------------------------------------
-
-    const result =
-      await pool.query(
-        `
-        INSERT INTO users (
-          fullname,
-          email,
-          password,
-          role
-        )
-        VALUES ($1, $2, $3, $4)
-        RETURNING
-          id,
-          fullname,
-          email,
-          role,
-          created_at
-        `,
-        [
-          fullname.trim(),
-          email.trim().toLowerCase(),
-          hashedPassword,
-          role,
-        ]
-      );
-
-    const newUser =
-      result.rows[0];
-
-    // --------------------------------------------------
-    // ACTIVITY LOG
-    // --------------------------------------------------
+    const newUser = result.rows[0];
 
     await createActivityLog({
       userId: newUser.id,
-
       action: "register",
-
       description:
         "User registered a new account.",
-
       entityType: "user",
-
       entityId: newUser.id,
-
       ipAddress,
-
       userAgent,
     });
 
-    // --------------------------------------------------
-    // RESPONSE
-    // --------------------------------------------------
-
     return res.status(201).json({
       success: true,
-
-      message:
-        "Registration Successful!",
-
+      message: "Registration Successful!",
       user: newUser,
     });
-
   } catch (error) {
     console.error(
       "REGISTER ERROR:",
@@ -378,8 +752,8 @@ const register = async (req, res) => {
 
     return res.status(500).json({
       success: false,
-      message:
-        "Server Error",
+      message: "Server Error",
+      error: error.message,
     });
   }
 };
@@ -395,15 +769,8 @@ const login = async (req, res) => {
       password,
     } = req.body;
 
-    const ipAddress =
-      getClientIp(req);
-
-    const userAgent =
-      getUserAgent(req);
-
-    // --------------------------------------------------
-    // VALIDATE INPUT
-    // --------------------------------------------------
+    const ipAddress = getClientIp(req);
+    const userAgent = getUserAgent(req);
 
     if (!email || !password) {
       return res.status(400).json({
@@ -416,138 +783,120 @@ const login = async (req, res) => {
     const normalizedEmail =
       email.trim().toLowerCase();
 
-    // --------------------------------------------------
+    // ==================================================
     // FIND USER
-    // --------------------------------------------------
+    // ==================================================
 
-    const result =
-      await pool.query(
-        `
-        SELECT *
-        FROM users
-        WHERE LOWER(email) = LOWER($1)
-        `,
-        [normalizedEmail]
-      );
+    const result = await pool.query(
+      `
+      SELECT *
+      FROM users
+      WHERE LOWER(email) = LOWER($1)
+      `,
+      [normalizedEmail]
+    );
 
     // ==================================================
-    // CASE 1:
-    // EMAIL DOES NOT EXIST
+    // UNKNOWN EMAIL
     // ==================================================
 
     if (result.rows.length === 0) {
-
-      // -----------------------------------------------
-      // ACTIVITY LOG
-      // -----------------------------------------------
-
       await createActivityLog({
         userId: null,
-
-        action:
-          "failed_login",
-
+        action: "failed_login",
         description:
           `Failed login attempt using unknown email: ${normalizedEmail}`,
-
-        entityType:
-          "authentication",
-
+        entityType: "authentication",
         entityId: null,
-
         ipAddress,
-
         userAgent,
       });
-
-      // -----------------------------------------------
-      // SECURITY REPORT
-      // -----------------------------------------------
 
       const securityReportId =
         await createSecurityReport({
           userId: null,
-
           attemptedEmail:
             normalizedEmail,
-
-          eventType:
-            "failed_login",
-
-          severity:
-            "medium",
-
+          eventType: "failed_login",
+          severity: "medium",
           description:
-            `Failed login attempt using an unregistered email address: ${normalizedEmail}`,
-
+            `Failed login attempt using an unregistered email address: ${normalizedEmail}.`,
           ipAddress,
-
           userAgent,
         });
 
-      // -----------------------------------------------
-      // CREATE RISK
-      // -----------------------------------------------
+      const riskResult =
+        await handleRepeatedLoginRisk({
+          userId: null,
+          email: normalizedEmail,
+          ipAddress,
+          securityReportId,
+        });
 
-      if (securityReportId) {
-
-        const risk =
-          await createRisk({
-            userId: null,
-
-            securityReportId,
-
-            riskType:
-              "Authentication",
-
-            title:
-              "Failed Login Attempt",
-
-            description:
-              `An unsuccessful login attempt was detected using the unregistered email address ${normalizedEmail}.`,
-
-            severity:
-              "medium",
-
-            recommendedAction:
-              "Review the login attempt and monitor the source IP address for repeated suspicious login attempts.",
-          });
-
-        if (!risk) {
-          console.error(
-            "RISK WAS NOT CREATED FOR SECURITY REPORT:",
-            securityReportId
-          );
-        }
-
-      } else {
-        console.error(
-          "RISK NOT CREATED BECAUSE SECURITY REPORT CREATION FAILED."
+      const remainingAttempts =
+        Math.max(
+          FAILED_LOGIN_THRESHOLD -
+            riskResult.attemptCount,
+          0
         );
-      }
 
-      // -----------------------------------------------
-      // RESPONSE
-      // -----------------------------------------------
+      let message =
+        "User not found.";
+
+      if (remainingAttempts > 0) {
+        message =
+          `User not found. ${remainingAttempts} attempt(s) remaining before additional security review.`;
+      } else {
+        message =
+          "User not found. Multiple failed login attempts have been detected and the activity has been flagged for security review.";
+      }
 
       return res.status(404).json({
         success: false,
-
-        message:
-          "User not found.",
+        message,
+        failedAttempts:
+          riskResult.attemptCount,
+        remainingAttempts,
+        riskCreated:
+          riskResult.riskCreated ||
+          false,
       });
     }
 
-    // --------------------------------------------------
+    // ==================================================
     // GET USER
-    // --------------------------------------------------
+    // ==================================================
 
-    const user =
-      result.rows[0];
+    const user = result.rows[0];
 
     // ==================================================
-    // CASE 2:
-    // PASSWORD IS WRONG
+    // ACCOUNT STATUS
+    // ==================================================
+
+    if (
+      user.account_status &&
+      user.account_status !== "active"
+    ) {
+      await createActivityLog({
+        userId: user.id,
+        action: "blocked_login",
+        description:
+          `Login attempt blocked because account status is ${user.account_status}.`,
+        entityType: "authentication",
+        entityId: user.id,
+        ipAddress,
+        userAgent,
+      });
+
+      return res.status(403).json({
+        success: false,
+        message:
+          "Your account is currently disabled. Please contact support.",
+      });
+    }
+
+    // ==================================================
+    // CHECK PASSWORD
     // ==================================================
 
     const isMatch =
@@ -556,191 +905,184 @@ const login = async (req, res) => {
         user.password
       );
 
-    if (!isMatch) {
+    // ==================================================
+    // WRONG PASSWORD
+    // ==================================================
 
-      // -----------------------------------------------
+    if (!isMatch) {
+      const counterResult =
+        await updateFailedAttemptCounter({
+          userId: user.id,
+        });
+
+      const failedAttempts =
+        counterResult.count;
+
+      const remainingAttempts =
+        Math.max(
+          FAILED_LOGIN_THRESHOLD -
+            failedAttempts,
+          0
+        );
+
+      // ------------------------------------------------
       // ACTIVITY LOG
-      // -----------------------------------------------
+      // ------------------------------------------------
 
       await createActivityLog({
-        userId:
-          user.id,
-
-        action:
-          "failed_login",
-
+        userId: user.id,
+        action: "failed_login",
         description:
-          `Failed login attempt for ${user.email}. Invalid password.`,
-
-        entityType:
-          "authentication",
-
-        entityId:
-          user.id,
-
+          `Failed login attempt #${failedAttempts} for ${user.email}. Invalid password.`,
+        entityType: "authentication",
+        entityId: user.id,
         ipAddress,
-
         userAgent,
       });
 
-      // -----------------------------------------------
+      // ------------------------------------------------
       // SECURITY REPORT
-      // -----------------------------------------------
+      // ------------------------------------------------
 
       const securityReportId =
         await createSecurityReport({
-          userId:
-            user.id,
-
+          userId: user.id,
           attemptedEmail:
             normalizedEmail,
-
-          eventType:
-            "failed_login",
+          eventType: "failed_login",
 
           severity:
-            "medium",
+            failedAttempts >=
+            FAILED_LOGIN_THRESHOLD
+              ? "high"
+              : "medium",
 
           description:
-            `Invalid password entered for ${user.email}.`,
+            `Invalid password entered for ${user.email}. Failed attempt #${failedAttempts}.`,
 
           ipAddress,
-
           userAgent,
         });
 
-      // -----------------------------------------------
-      // CREATE RISK
-      // -----------------------------------------------
+      // ------------------------------------------------
+      // CHECK / CREATE RISK
+      // ------------------------------------------------
 
-      if (securityReportId) {
+      const riskResult =
+        await handleRepeatedLoginRisk({
+          userId: user.id,
+          email: normalizedEmail,
+          ipAddress,
+          securityReportId,
+          userName: user.fullname,
+        });
 
-        const risk =
-          await createRisk({
-            userId:
-              user.id,
+      // ------------------------------------------------
+      // MESSAGE
+      // ------------------------------------------------
 
-            securityReportId,
+      let loginMessage;
 
-            riskType:
-              "Authentication",
-
-            title:
-              "Invalid Password Attempt",
-
-            description:
-              `A failed login attempt was detected for ${user.fullname} (${user.email}) because an incorrect password was entered.`,
-
-            severity:
-              "medium",
-
-            recommendedAction:
-              "Monitor this account for repeated failed login attempts and investigate if suspicious activity continues.",
-          });
-
-        if (!risk) {
-          console.error(
-            "RISK WAS NOT CREATED FOR SECURITY REPORT:",
-            securityReportId
-          );
-        }
-
+      if (remainingAttempts > 0) {
+        loginMessage =
+          `Invalid password. ${remainingAttempts} attempt(s) remaining before additional security review.`;
+      } else if (
+        riskResult.riskCreated
+      ) {
+        loginMessage =
+          "Invalid password. Your repeated failed login attempts have been flagged for security review.";
       } else {
-        console.error(
-          "RISK NOT CREATED BECAUSE SECURITY REPORT CREATION FAILED."
-        );
+        loginMessage =
+          "Invalid password. Your repeated failed login attempts have already been flagged for security review.";
       }
-
-      // -----------------------------------------------
-      // RESPONSE
-      // -----------------------------------------------
 
       return res.status(401).json({
         success: false,
+        message: loginMessage,
 
-        message:
-          "Invalid Password",
+        failedAttempts,
+
+        remainingAttempts,
+
+        riskCreated:
+          riskResult.riskCreated ||
+          false,
+
+        riskAlreadyExists:
+          Boolean(
+            riskResult.existingRiskId
+          ),
       });
     }
 
     // ==================================================
-    // CASE 3:
     // SUCCESSFUL LOGIN
     // ==================================================
 
-    // --------------------------------------------------
+    await resetFailedAttemptCounter({
+      userId: user.id,
+    });
+
+    // ==================================================
     // CREATE JWT
-    // --------------------------------------------------
+    // ==================================================
 
-    const token =
-      jwt.sign(
-        {
-          id: user.id,
-          role: user.role,
-        },
+    const token = jwt.sign(
+      {
+        id: user.id,
+        role: user.role,
+      },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "1d",
+      }
+    );
 
-        process.env.JWT_SECRET,
-
-        {
-          expiresIn:
-            "1d",
-        }
-      );
-
-    // --------------------------------------------------
+    // ==================================================
     // ACTIVITY LOG
-    // --------------------------------------------------
+    // ==================================================
 
     await createActivityLog({
-      userId:
-        user.id,
-
-      action:
-        "login",
-
+      userId: user.id,
+      action: "login",
       description:
-        "User logged into the system.",
-
-      entityType:
-        "authentication",
-
-      entityId:
-        user.id,
-
+        "User logged into the system successfully.",
+      entityType: "authentication",
+      entityId: user.id,
       ipAddress,
-
       userAgent,
     });
 
-    // --------------------------------------------------
-    // RESPONSE
-    // --------------------------------------------------
+    // ==================================================
+    // FORCE PASSWORD RESET
+    // ==================================================
+
+    const forcePasswordReset =
+      user.force_password_reset === true;
+
+    // ==================================================
+    // SUCCESS RESPONSE
+    // ==================================================
 
     return res.status(200).json({
       success: true,
 
-      message:
-        "Login Successful!",
+      message: forcePasswordReset
+        ? "Login successful. You must change your password."
+        : "Login Successful!",
 
       token,
 
+      forcePasswordReset,
+
       user: {
-        id:
-          user.id,
-
-        fullname:
-          user.fullname,
-
-        email:
-          user.email,
-
-        role:
-          user.role,
+        id: user.id,
+        fullname: user.fullname,
+        email: user.email,
+        role: user.role,
       },
     });
-
   } catch (error) {
-
     console.error(
       "LOGIN ERROR:",
       error
@@ -748,9 +1090,8 @@ const login = async (req, res) => {
 
     return res.status(500).json({
       success: false,
-
-      message:
-        "Server Error",
+      message: "Server Error",
+      error: error.message,
     });
   }
 };

@@ -13,29 +13,49 @@ import {
   RefreshCw,
   X,
   ArrowLeft,
+  Wrench,
+  LockKeyhole,
+  UserX,
+  Bell,
+  KeyRound,
+  Loader2,
+  ClipboardCheck,
 } from "lucide-react";
 
 interface Risk {
   id: number;
   user_id: number | null;
   security_report_id: number | null;
+
   risk_type: string;
   title: string;
   description: string;
+
   severity: "low" | "medium" | "high" | "critical";
+
   recommended_action: string | null;
+
   status: "open" | "reviewed" | "resolved";
+
   reviewed_by: number | null;
   reviewed_at: string | null;
+
   resolved_by: number | null;
   resolved_at: string | null;
+
+  resolution_action: string | null;
+  resolution_note: string | null;
+
   created_at: string;
   updated_at: string;
 
   user_name: string | null;
   user_email: string | null;
+
   reviewer_name: string | null;
   resolver_name: string | null;
+
+  review_note?: string | null;
 }
 
 interface RiskSummary {
@@ -43,6 +63,7 @@ interface RiskSummary {
   open_risks: string;
   reviewed_risks: string;
   resolved_risks: string;
+
   critical_risks: string;
   high_risks: string;
   medium_risks: string;
@@ -56,13 +77,32 @@ interface User {
   role: "admin" | "freelancer" | "client";
 }
 
+type ResolutionAction =
+  | "reset_password"
+  | "disable_account"
+  | "unlock_account"
+  | "notify_user"
+  | "manual_fix";
+
 export default function RiskManagementPage() {
   const router = useRouter();
 
+  // ==================================================
+  // USER
+  // ==================================================
+
   const [user, setUser] = useState<User | null>(null);
+
+  // ==================================================
+  // DATA
+  // ==================================================
 
   const [risks, setRisks] = useState<Risk[]>([]);
   const [summary, setSummary] = useState<RiskSummary | null>(null);
+
+  // ==================================================
+  // LOADING / MESSAGES
+  // ==================================================
 
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
@@ -70,15 +110,44 @@ export default function RiskManagementPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
+  // ==================================================
+  // FILTERS
+  // ==================================================
+
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [severityFilter, setSeverityFilter] = useState("all");
 
+  // ==================================================
+  // DETAILS MODAL
+  // ==================================================
+
   const [selectedRisk, setSelectedRisk] = useState<Risk | null>(null);
 
-  // ============================================
+  // ==================================================
+  // REVIEW MODAL
+  // ==================================================
+
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [reviewRisk, setReviewRisk] = useState<Risk | null>(null);
+  const [reviewNote, setReviewNote] = useState("");
+
+  // ==================================================
+  // RESOLUTION MODAL
+  // ==================================================
+
+  const [showResolveModal, setShowResolveModal] = useState(false);
+  const [resolutionRisk, setResolutionRisk] = useState<Risk | null>(null);
+
+  const [resolutionAction, setResolutionAction] = useState<
+    ResolutionAction | ""
+  >("");
+
+  const [resolutionNote, setResolutionNote] = useState("");
+
+  // ==================================================
   // GET LOGGED-IN USER
-  // ============================================
+  // ==================================================
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
@@ -105,9 +174,9 @@ export default function RiskManagementPage() {
     }
   }, [router]);
 
-  // ============================================
+  // ==================================================
   // FETCH RISKS
-  // ============================================
+  // ==================================================
 
   const fetchRisks = async () => {
     try {
@@ -140,9 +209,9 @@ export default function RiskManagementPage() {
     }
   };
 
-  // ============================================
-  // FETCH RISK SUMMARY
-  // ============================================
+  // ==================================================
+  // FETCH SUMMARY
+  // ==================================================
 
   const fetchSummary = async () => {
     try {
@@ -160,13 +229,16 @@ export default function RiskManagementPage() {
 
       setSummary(data.summary);
     } catch (error) {
-      console.error("FETCH RISK SUMMARY ERROR:", error);
+      console.error(
+        "FETCH RISK SUMMARY ERROR:",
+        error
+      );
     }
   };
 
-  // ============================================
+  // ==================================================
   // INITIAL FETCH
-  // ============================================
+  // ==================================================
 
   useEffect(() => {
     if (!user) return;
@@ -175,25 +247,29 @@ export default function RiskManagementPage() {
     fetchSummary();
   }, [user]);
 
-  // ============================================
+  // ==================================================
   // REFRESH
-  // ============================================
+  // ==================================================
 
   const handleRefresh = async () => {
     setSuccess("");
+    setError("");
+
     await Promise.all([
       fetchRisks(),
       fetchSummary(),
     ]);
   };
 
-  // ============================================
+  // ==================================================
   // UPDATE RISK STATUS
-  // ============================================
+  // ==================================================
 
   const updateRiskStatus = async (
     riskId: number,
-    status: "open" | "reviewed" | "resolved"
+    status: "open" | "reviewed" | "resolved",
+    action?: string,
+    note?: string
   ) => {
     if (!user) return;
 
@@ -212,6 +288,15 @@ export default function RiskManagementPage() {
           body: JSON.stringify({
             status,
             admin_id: user.id,
+
+            resolution_action: action || null,
+
+            resolution_note: note || null,
+
+            review_note:
+              status === "reviewed"
+                ? note || null
+                : null,
           }),
         }
       );
@@ -244,11 +329,46 @@ export default function RiskManagementPage() {
           : currentRisk
       );
 
-      setSuccess(data.message || "Risk updated successfully.");
+      setReviewRisk((currentRisk) =>
+        currentRisk && currentRisk.id === riskId
+          ? {
+              ...currentRisk,
+              ...data.risk,
+            }
+          : currentRisk
+      );
+
+      setResolutionRisk((currentRisk) =>
+        currentRisk && currentRisk.id === riskId
+          ? {
+              ...currentRisk,
+              ...data.risk,
+            }
+          : currentRisk
+      );
+
+      setSuccess(
+        data.message ||
+          "Risk updated successfully."
+      );
 
       await fetchSummary();
+
+      // Close review modal
+      setShowReviewModal(false);
+      setReviewRisk(null);
+      setReviewNote("");
+
+      // Close resolve modal
+      setShowResolveModal(false);
+      setResolutionRisk(null);
+      setResolutionAction("");
+      setResolutionNote("");
     } catch (error) {
-      console.error("UPDATE RISK ERROR:", error);
+      console.error(
+        "UPDATE RISK ERROR:",
+        error
+      );
 
       setError(
         error instanceof Error
@@ -260,9 +380,125 @@ export default function RiskManagementPage() {
     }
   };
 
-  // ============================================
+  // ==================================================
+  // OPEN REVIEW MODAL
+  // ==================================================
+
+  const openReviewModal = (risk: Risk) => {
+    setError("");
+    setSuccess("");
+
+    setReviewRisk(risk);
+    setReviewNote(risk.review_note || "");
+
+    setShowReviewModal(true);
+  };
+
+  // ==================================================
+  // CLOSE REVIEW MODAL
+  // ==================================================
+
+  const closeReviewModal = () => {
+    if (actionLoading !== null) {
+      return;
+    }
+
+    setShowReviewModal(false);
+    setReviewRisk(null);
+    setReviewNote("");
+  };
+
+  // ==================================================
+  // CONFIRM REVIEW
+  // ==================================================
+
+  const handleConfirmReview = async () => {
+    if (!reviewRisk) {
+      return;
+    }
+
+    if (!reviewNote.trim()) {
+      setError(
+        "Please enter a review note."
+      );
+
+      return;
+    }
+
+    await updateRiskStatus(
+      reviewRisk.id,
+      "reviewed",
+      undefined,
+      reviewNote.trim()
+    );
+  };
+
+  // ==================================================
+  // OPEN RESOLVE MODAL
+  // ==================================================
+
+  const openResolveModal = (risk: Risk) => {
+    setError("");
+    setSuccess("");
+
+    setResolutionRisk(risk);
+    setResolutionAction("");
+    setResolutionNote("");
+
+    setShowResolveModal(true);
+  };
+
+  // ==================================================
+  // CLOSE RESOLVE MODAL
+  // ==================================================
+
+  const closeResolveModal = () => {
+    if (actionLoading !== null) {
+      return;
+    }
+
+    setShowResolveModal(false);
+    setResolutionRisk(null);
+    setResolutionAction("");
+    setResolutionNote("");
+  };
+
+  // ==================================================
+  // CONFIRM RESOLUTION
+  // ==================================================
+
+  const handleConfirmResolution = async () => {
+    if (!resolutionRisk) {
+      return;
+    }
+
+    if (!resolutionAction) {
+      setError(
+        "Please select a resolution action."
+      );
+
+      return;
+    }
+
+    if (!resolutionNote.trim()) {
+      setError(
+        "Please enter a resolution note."
+      );
+
+      return;
+    }
+
+    await updateRiskStatus(
+      resolutionRisk.id,
+      "resolved",
+      resolutionAction,
+      resolutionNote.trim()
+    );
+  };
+
+  // ==================================================
   // DELETE RISK
-  // ============================================
+  // ==================================================
 
   const deleteRisk = async (riskId: number) => {
     const confirmed = window.confirm(
@@ -303,13 +539,27 @@ export default function RiskManagementPage() {
         setSelectedRisk(null);
       }
 
+      if (reviewRisk?.id === riskId) {
+        setShowReviewModal(false);
+        setReviewRisk(null);
+      }
+
+      if (resolutionRisk?.id === riskId) {
+        setShowResolveModal(false);
+        setResolutionRisk(null);
+      }
+
       setSuccess(
-        data.message || "Risk deleted successfully."
+        data.message ||
+          "Risk deleted successfully."
       );
 
       await fetchSummary();
     } catch (error) {
-      console.error("DELETE RISK ERROR:", error);
+      console.error(
+        "DELETE RISK ERROR:",
+        error
+      );
 
       setError(
         error instanceof Error
@@ -321,17 +571,20 @@ export default function RiskManagementPage() {
     }
   };
 
-  // ============================================
+  // ==================================================
   // FILTER RISKS
-  // ============================================
+  // ==================================================
 
   const filteredRisks = useMemo(() => {
     return risks.filter((risk) => {
-      const searchText = search.trim().toLowerCase();
+      const searchText =
+        search.trim().toLowerCase();
 
       const matchesSearch =
         !searchText ||
-        risk.title.toLowerCase().includes(searchText) ||
+        risk.title
+          .toLowerCase()
+          .includes(searchText) ||
         risk.description
           .toLowerCase()
           .includes(searchText) ||
@@ -366,9 +619,9 @@ export default function RiskManagementPage() {
     severityFilter,
   ]);
 
-  // ============================================
+  // ==================================================
   // SEVERITY STYLE
-  // ============================================
+  // ==================================================
 
   const getSeverityClass = (
     severity: Risk["severity"]
@@ -391,9 +644,9 @@ export default function RiskManagementPage() {
     }
   };
 
-  // ============================================
+  // ==================================================
   // STATUS STYLE
-  // ============================================
+  // ==================================================
 
   const getStatusClass = (
     status: Risk["status"]
@@ -413,11 +666,41 @@ export default function RiskManagementPage() {
     }
   };
 
-  // ============================================
-  // FORMAT DATE
-  // ============================================
+  // ==================================================
+  // RESOLUTION ACTION LABEL
+  // ==================================================
 
-  const formatDate = (date: string | null) => {
+  const getResolutionActionLabel = (
+    action: string | null
+  ) => {
+    switch (action) {
+      case "reset_password":
+        return "Reset Password";
+
+      case "disable_account":
+        return "Disable Account";
+
+      case "unlock_account":
+        return "Unlock Account";
+
+      case "notify_user":
+        return "Notify User";
+
+      case "manual_fix":
+        return "Manual Fix";
+
+      default:
+        return "N/A";
+    }
+  };
+
+  // ==================================================
+  // FORMAT DATE
+  // ==================================================
+
+  const formatDate = (
+    date: string | null
+  ) => {
     if (!date) {
       return "N/A";
     }
@@ -432,9 +715,9 @@ export default function RiskManagementPage() {
     );
   };
 
-  // ============================================
+  // ==================================================
   // LOADING
-  // ============================================
+  // ==================================================
 
   if (!user || loading) {
     return (
@@ -450,55 +733,52 @@ export default function RiskManagementPage() {
     );
   }
 
-  // ============================================
+  // ==================================================
   // PAGE
-  // ============================================
+  // ==================================================
 
   return (
-  <div className="min-h-screen bg-gray-100 px-4 py-6 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-100 px-4 py-6 sm:px-6 lg:px-8">
 
-    {/* ============================================
-        BACK TO DASHBOARD
-    ============================================ */}
+      {/* BACK TO DASHBOARD */}
 
-    <div className="mb-5">
-      <button
-        type="button"
-        onClick={() => router.push("/admin")}
-        className="
-          inline-flex
-          items-center
-          gap-2
-          rounded-xl
-          border
-          border-gray-300
-          bg-white
-          px-4
-          py-2.5
-          text-sm
-          font-semibold
-          text-gray-700
-          shadow-sm
-          transition-all
-          duration-200
-          hover:border-emerald-500
-          hover:bg-emerald-50
-          hover:text-emerald-600
-        "
-      >
-        <ArrowLeft size={17} />
-        Back to Dashboard
-      </button>
-    </div>
+      <div className="mb-5">
+        <button
+          type="button"
+          onClick={() => router.push("/admin")}
+          className="
+            inline-flex
+            items-center
+            gap-2
+            rounded-xl
+            border
+            border-gray-300
+            bg-white
+            px-4
+            py-2.5
+            text-sm
+            font-semibold
+            text-gray-700
+            shadow-sm
+            transition-all
+            duration-200
+            hover:border-emerald-500
+            hover:bg-emerald-50
+            hover:text-emerald-600
+          "
+        >
+          <ArrowLeft size={17} />
+          Back to Dashboard
+        </button>
+      </div>
 
-    {/* ============================================
-        HEADER
-    ============================================ */}
+      {/* HEADER */}
 
-    <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+      <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
 
         <div>
           <div className="flex items-center gap-3">
+
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100">
               <ShieldAlert
                 size={25}
@@ -515,6 +795,7 @@ export default function RiskManagementPage() {
                 Identify, review, resolve, and monitor platform risks.
               </p>
             </div>
+
           </div>
         </div>
 
@@ -546,9 +827,7 @@ export default function RiskManagementPage() {
 
       </div>
 
-      {/* ============================================
-          ERROR
-      ============================================ */}
+      {/* ERROR */}
 
       {error && (
         <div className="mb-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
@@ -556,9 +835,7 @@ export default function RiskManagementPage() {
         </div>
       )}
 
-      {/* ============================================
-          SUCCESS
-      ============================================ */}
+      {/* SUCCESS */}
 
       {success && (
         <div className="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">
@@ -566,17 +843,12 @@ export default function RiskManagementPage() {
         </div>
       )}
 
-      {/* ============================================
-          SUMMARY CARDS
-      ============================================ */}
+      {/* SUMMARY CARDS */}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
 
-        {/* TOTAL */}
-
         <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between">
-
             <div>
               <p className="text-sm font-medium text-gray-500">
                 Total Risks
@@ -593,15 +865,11 @@ export default function RiskManagementPage() {
                 className="text-purple-600"
               />
             </div>
-
           </div>
         </div>
 
-        {/* OPEN */}
-
         <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between">
-
             <div>
               <p className="text-sm font-medium text-gray-500">
                 Open Risks
@@ -618,15 +886,11 @@ export default function RiskManagementPage() {
                 className="text-red-600"
               />
             </div>
-
           </div>
         </div>
 
-        {/* REVIEWED */}
-
         <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between">
-
             <div>
               <p className="text-sm font-medium text-gray-500">
                 Reviewed
@@ -643,15 +907,11 @@ export default function RiskManagementPage() {
                 className="text-blue-600"
               />
             </div>
-
           </div>
         </div>
 
-        {/* RESOLVED */}
-
         <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between">
-
             <div>
               <p className="text-sm font-medium text-gray-500">
                 Resolved
@@ -668,15 +928,12 @@ export default function RiskManagementPage() {
                 className="text-emerald-600"
               />
             </div>
-
           </div>
         </div>
 
       </div>
 
-      {/* ============================================
-          SEVERITY SUMMARY
-      ============================================ */}
+      {/* SEVERITY SUMMARY */}
 
       <div className="mt-5 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
 
@@ -729,15 +986,11 @@ export default function RiskManagementPage() {
         </div>
       </div>
 
-      {/* ============================================
-          FILTERS
-      ============================================ */}
+      {/* FILTERS — UNCHANGED */}
 
       <div className="mt-5 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-
-          {/* SEARCH */}
 
           <div className="relative">
 
@@ -779,8 +1032,6 @@ export default function RiskManagementPage() {
 
           </div>
 
-          {/* STATUS */}
-
           <select
             value={statusFilter}
             onChange={(event) =>
@@ -817,8 +1068,6 @@ export default function RiskManagementPage() {
               Resolved
             </option>
           </select>
-
-          {/* SEVERITY */}
 
           <select
             value={severityFilter}
@@ -865,13 +1114,14 @@ export default function RiskManagementPage() {
 
       </div>
 
-      {/* ============================================
-          RISK LIST
-      ============================================ */}
+      {/* ==================================================
+          RISK RECORDS — LAYOUT KEPT
+      ================================================== */}
 
       <div className="mt-5 rounded-2xl border border-gray-200 bg-white shadow-sm">
 
         <div className="border-b border-gray-100 px-5 py-4">
+
           <div className="flex items-center justify-between">
 
             <div>
@@ -889,9 +1139,8 @@ export default function RiskManagementPage() {
             </div>
 
           </div>
-        </div>
 
-        {/* EMPTY */}
+        </div>
 
         {filteredRisks.length === 0 && (
           <div className="px-5 py-14 text-center">
@@ -913,8 +1162,6 @@ export default function RiskManagementPage() {
 
           </div>
         )}
-
-        {/* LIST */}
 
         {filteredRisks.length > 0 && (
           <div className="divide-y divide-gray-100">
@@ -987,8 +1234,7 @@ export default function RiskManagementPage() {
                       <span>
                         User:{" "}
                         <span className="font-medium text-gray-700">
-                          {risk.user_name ||
-                            "System"}
+                          {risk.user_name || "System"}
                         </span>
                       </span>
 
@@ -1012,6 +1258,8 @@ export default function RiskManagementPage() {
                   {/* ACTIONS */}
 
                   <div className="flex shrink-0 flex-wrap gap-2">
+
+                    {/* VIEW */}
 
                     <button
                       type="button"
@@ -1040,6 +1288,8 @@ export default function RiskManagementPage() {
                       View
                     </button>
 
+                    {/* REVIEW */}
+
                     {risk.status === "open" && (
                       <button
                         type="button"
@@ -1047,12 +1297,12 @@ export default function RiskManagementPage() {
                           actionLoading === risk.id
                         }
                         onClick={() =>
-                          updateRiskStatus(
-                            risk.id,
-                            "reviewed"
-                          )
+                          openReviewModal(risk)
                         }
                         className="
+                          flex
+                          items-center
+                          gap-2
                           rounded-lg
                           border
                           border-blue-200
@@ -1067,9 +1317,12 @@ export default function RiskManagementPage() {
                           disabled:opacity-50
                         "
                       >
+                        <ClipboardCheck size={16} />
                         Review
                       </button>
                     )}
+
+                    {/* RESOLVE */}
 
                     {risk.status !== "resolved" && (
                       <button
@@ -1078,10 +1331,7 @@ export default function RiskManagementPage() {
                           actionLoading === risk.id
                         }
                         onClick={() =>
-                          updateRiskStatus(
-                            risk.id,
-                            "resolved"
-                          )
+                          openResolveModal(risk)
                         }
                         className="
                           rounded-lg
@@ -1101,6 +1351,8 @@ export default function RiskManagementPage() {
                         Resolve
                       </button>
                     )}
+
+                    {/* REOPEN */}
 
                     {risk.status === "resolved" && (
                       <button
@@ -1132,6 +1384,8 @@ export default function RiskManagementPage() {
                         Reopen
                       </button>
                     )}
+
+                    {/* DELETE */}
 
                     <button
                       type="button"
@@ -1173,9 +1427,9 @@ export default function RiskManagementPage() {
 
       </div>
 
-      {/* ============================================
-          RISK DETAILS MODAL
-      ============================================ */}
+      {/* ==================================================
+          VIEW DETAILS MODAL
+      ================================================== */}
 
       {selectedRisk && (
         <div
@@ -1189,7 +1443,9 @@ export default function RiskManagementPage() {
             bg-black/40
             p-4
           "
-          onClick={() => setSelectedRisk(null)}
+          onClick={() =>
+            setSelectedRisk(null)
+          }
         >
 
           <div
@@ -1207,7 +1463,7 @@ export default function RiskManagementPage() {
             }
           >
 
-            {/* MODAL HEADER */}
+            {/* HEADER */}
 
             <div className="flex items-start justify-between border-b border-gray-100 p-5">
 
@@ -1263,11 +1519,9 @@ export default function RiskManagementPage() {
 
             </div>
 
-            {/* MODAL BODY */}
+            {/* BODY */}
 
             <div className="space-y-5 p-5">
-
-              {/* TYPE */}
 
               <div>
                 <p className="text-xs font-semibold uppercase text-gray-500">
@@ -1279,8 +1533,6 @@ export default function RiskManagementPage() {
                 </p>
               </div>
 
-              {/* DESCRIPTION */}
-
               <div>
                 <p className="text-xs font-semibold uppercase text-gray-500">
                   Description
@@ -1290,8 +1542,6 @@ export default function RiskManagementPage() {
                   {selectedRisk.description}
                 </p>
               </div>
-
-              {/* RECOMMENDED ACTION */}
 
               <div>
                 <p className="text-xs font-semibold uppercase text-gray-500">
@@ -1304,8 +1554,6 @@ export default function RiskManagementPage() {
                 </p>
               </div>
 
-              {/* USER */}
-
               <div className="rounded-xl bg-gray-50 p-4">
 
                 <p className="text-xs font-semibold uppercase text-gray-500">
@@ -1313,8 +1561,7 @@ export default function RiskManagementPage() {
                 </p>
 
                 <p className="mt-1 font-semibold text-gray-900">
-                  {selectedRisk.user_name ||
-                    "System"}
+                  {selectedRisk.user_name || "System"}
                 </p>
 
                 {selectedRisk.user_email && (
@@ -1324,8 +1571,6 @@ export default function RiskManagementPage() {
                 )}
 
               </div>
-
-              {/* STATUS */}
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
 
@@ -1388,35 +1633,78 @@ export default function RiskManagementPage() {
                     )}
                   </p>
 
+                  {selectedRisk.review_note && (
+                    <div className="mt-3 border-t border-blue-200 pt-3">
+
+                      <p className="text-xs font-semibold uppercase text-blue-600">
+                        Review Note
+                      </p>
+
+                      <p className="mt-1 text-sm leading-6 text-blue-900">
+                        {selectedRisk.review_note}
+                      </p>
+
+                    </div>
+                  )}
+
                 </div>
               )}
 
               {/* RESOLUTION INFORMATION */}
 
-              {selectedRisk.resolved_by && (
-                <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-4">
+              {selectedRisk.status === "resolved" && (
+                <div className="space-y-3 rounded-xl border border-emerald-100 bg-emerald-50 p-4">
 
-                  <p className="text-xs font-semibold uppercase text-emerald-600">
-                    Resolved By
-                  </p>
+                  <div>
+                    <p className="text-xs font-semibold uppercase text-emerald-600">
+                      Resolution Action
+                    </p>
 
-                  <p className="mt-1 font-semibold text-emerald-900">
-                    {selectedRisk.resolver_name ||
-                      "Administrator"}
-                  </p>
+                    <p className="mt-1 font-semibold text-emerald-900">
+                      {getResolutionActionLabel(
+                        selectedRisk.resolution_action
+                      )}
+                    </p>
+                  </div>
 
-                  <p className="mt-1 text-sm text-emerald-700">
-                    {formatDate(
-                      selectedRisk.resolved_at
-                    )}
-                  </p>
+                  <div>
+                    <p className="text-xs font-semibold uppercase text-emerald-600">
+                      Resolution Note
+                    </p>
+
+                    <p className="mt-1 leading-6 text-emerald-900">
+                      {selectedRisk.resolution_note ||
+                        "No resolution note provided."}
+                    </p>
+                  </div>
+
+                  {selectedRisk.resolved_by && (
+                    <div className="border-t border-emerald-200 pt-3">
+
+                      <p className="text-xs font-semibold uppercase text-emerald-600">
+                        Resolved By
+                      </p>
+
+                      <p className="mt-1 font-semibold text-emerald-900">
+                        {selectedRisk.resolver_name ||
+                          "Administrator"}
+                      </p>
+
+                      <p className="mt-1 text-sm text-emerald-700">
+                        {formatDate(
+                          selectedRisk.resolved_at
+                        )}
+                      </p>
+
+                    </div>
+                  )}
 
                 </div>
               )}
 
             </div>
 
-            {/* MODAL FOOTER */}
+            {/* FOOTER */}
 
             <div className="flex flex-wrap justify-end gap-3 border-t border-gray-100 p-5">
 
@@ -1427,13 +1715,16 @@ export default function RiskManagementPage() {
                     actionLoading ===
                     selectedRisk.id
                   }
-                  onClick={() =>
-                    updateRiskStatus(
-                      selectedRisk.id,
-                      "reviewed"
-                    )
-                  }
+                  onClick={() => {
+                    setSelectedRisk(null);
+                    openReviewModal(
+                      selectedRisk
+                    );
+                  }}
                   className="
+                    inline-flex
+                    items-center
+                    gap-2
                     rounded-lg
                     bg-blue-600
                     px-4
@@ -1446,7 +1737,8 @@ export default function RiskManagementPage() {
                     disabled:opacity-50
                   "
                 >
-                  Mark Reviewed
+                  <ClipboardCheck size={17} />
+                  Review Risk
                 </button>
               )}
 
@@ -1457,12 +1749,12 @@ export default function RiskManagementPage() {
                     actionLoading ===
                     selectedRisk.id
                   }
-                  onClick={() =>
-                    updateRiskStatus(
-                      selectedRisk.id,
-                      "resolved"
-                    )
-                  }
+                  onClick={() => {
+                    setSelectedRisk(null);
+                    openResolveModal(
+                      selectedRisk
+                    );
+                  }}
                   className="
                     rounded-lg
                     bg-emerald-600
@@ -1530,6 +1822,688 @@ export default function RiskManagementPage() {
                 "
               >
                 Close
+              </button>
+
+            </div>
+
+          </div>
+
+        </div>
+      )}
+
+      {/* ==================================================
+          REVIEW RISK MODAL
+      ================================================== */}
+
+      {showReviewModal && reviewRisk && (
+        <div
+          className="
+            fixed
+            inset-0
+            z-[60]
+            flex
+            items-center
+            justify-center
+            bg-black/50
+            p-4
+          "
+          onClick={closeReviewModal}
+        >
+
+          <div
+            className="
+              w-full
+              max-w-lg
+              rounded-2xl
+              bg-white
+              shadow-2xl
+            "
+            onClick={(event) =>
+              event.stopPropagation()
+            }
+          >
+
+            {/* HEADER */}
+
+            <div className="flex items-start justify-between border-b border-gray-100 p-5">
+
+              <div className="flex items-start gap-3">
+
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-100">
+                  <ClipboardCheck
+                    size={21}
+                    className="text-blue-600"
+                  />
+                </div>
+
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900">
+                    Review Risk
+                  </h2>
+
+                  <p className="mt-1 text-sm text-gray-500">
+                    Review this security risk before deciding whether further action is required.
+                  </p>
+                </div>
+
+              </div>
+
+              <button
+                type="button"
+                onClick={closeReviewModal}
+                disabled={
+                  actionLoading !== null
+                }
+                className="
+                  rounded-lg
+                  p-2
+                  text-gray-400
+                  transition
+                  hover:bg-gray-100
+                  hover:text-gray-700
+                  disabled:opacity-50
+                "
+              >
+                <X size={20} />
+              </button>
+
+            </div>
+
+            {/* BODY */}
+
+            <div className="space-y-5 p-5">
+
+              {/* RISK */}
+
+              <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+
+                <div className="flex flex-wrap items-center gap-2">
+
+                  <h3 className="font-semibold text-gray-900">
+                    {reviewRisk.title}
+                  </h3>
+
+                  <span
+                    className={`
+                      rounded-full
+                      border
+                      px-2.5
+                      py-1
+                      text-xs
+                      font-semibold
+                      capitalize
+                      ${getSeverityClass(
+                        reviewRisk.severity
+                      )}
+                    `}
+                  >
+                    {reviewRisk.severity}
+                  </span>
+
+                </div>
+
+                <p className="mt-2 text-sm leading-6 text-gray-600">
+                  {reviewRisk.description}
+                </p>
+
+              </div>
+
+              {/* RISK TYPE */}
+
+              <div>
+                <p className="text-xs font-semibold uppercase text-gray-500">
+                  Risk Type
+                </p>
+
+                <p className="mt-1 font-medium text-gray-900">
+                  {reviewRisk.risk_type}
+                </p>
+              </div>
+
+              {/* ASSOCIATED USER */}
+
+              <div className="rounded-xl border border-gray-200 bg-white p-4">
+
+                <p className="text-xs font-semibold uppercase text-gray-500">
+                  Associated User
+                </p>
+
+                <p className="mt-1 font-semibold text-gray-900">
+                  {reviewRisk.user_name || "System"}
+                </p>
+
+                {reviewRisk.user_email && (
+                  <p className="text-sm text-gray-500">
+                    {reviewRisk.user_email}
+                  </p>
+                )}
+
+              </div>
+
+              {/* REVIEW NOTE */}
+
+              <div>
+
+                <label className="mb-2 block text-sm font-semibold text-gray-800">
+                  Review Note
+                  <span className="ml-1 text-red-500">
+                    *
+                  </span>
+                </label>
+
+                <textarea
+                  value={reviewNote}
+                  onChange={(event) =>
+                    setReviewNote(
+                      event.target.value
+                    )
+                  }
+                  disabled={
+                    actionLoading !== null
+                  }
+                  rows={5}
+                  placeholder="Write what you found during the review..."
+                  className="
+                    w-full
+                    resize-none
+                    rounded-xl
+                    border
+                    border-gray-300
+                    bg-white
+                    px-4
+                    py-3
+                    text-sm
+                    text-gray-700
+                    outline-none
+                    transition
+                    placeholder:text-gray-400
+                    focus:border-blue-500
+                    focus:ring-2
+                    focus:ring-blue-100
+                    disabled:bg-gray-100
+                  "
+                />
+
+                <p className="mt-2 text-xs text-gray-500">
+                  Example: "Checked the user's login activity. Multiple failed attempts were detected, but no additional suspicious activity was found."
+                </p>
+
+              </div>
+
+            </div>
+
+            {/* FOOTER */}
+
+            <div className="flex flex-col-reverse gap-3 border-t border-gray-100 p-5 sm:flex-row sm:justify-end">
+
+              <button
+                type="button"
+                onClick={closeReviewModal}
+                disabled={
+                  actionLoading !== null
+                }
+                className="
+                  rounded-xl
+                  border
+                  border-gray-300
+                  bg-white
+                  px-5
+                  py-2.5
+                  text-sm
+                  font-semibold
+                  text-gray-700
+                  transition
+                  hover:bg-gray-50
+                  disabled:opacity-50
+                "
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={handleConfirmReview}
+                disabled={
+                  actionLoading !== null ||
+                  !reviewNote.trim()
+                }
+                className="
+                  inline-flex
+                  items-center
+                  justify-center
+                  gap-2
+                  rounded-xl
+                  bg-blue-600
+                  px-5
+                  py-2.5
+                  text-sm
+                  font-semibold
+                  text-white
+                  transition
+                  hover:bg-blue-700
+                  disabled:cursor-not-allowed
+                  disabled:opacity-50
+                "
+              >
+
+                {actionLoading ===
+                reviewRisk.id ? (
+                  <>
+                    <Loader2
+                      size={17}
+                      className="animate-spin"
+                    />
+                    Reviewing...
+                  </>
+                ) : (
+                  <>
+                    <ClipboardCheck size={17} />
+                    Mark as Reviewed
+                  </>
+                )}
+
+              </button>
+
+            </div>
+
+          </div>
+
+        </div>
+      )}
+
+      {/* ==================================================
+          RESOLVE RISK MODAL
+      ================================================== */}
+
+      {showResolveModal && resolutionRisk && (
+        <div
+          className="
+            fixed
+            inset-0
+            z-[60]
+            flex
+            items-center
+            justify-center
+            bg-black/50
+            p-4
+          "
+          onClick={closeResolveModal}
+        >
+
+          <div
+            className="
+              w-full
+              max-w-lg
+              rounded-2xl
+              bg-white
+              shadow-2xl
+            "
+            onClick={(event) =>
+              event.stopPropagation()
+            }
+          >
+
+            {/* HEADER */}
+
+            <div className="flex items-start justify-between border-b border-gray-100 p-5">
+
+              <div className="flex items-start gap-3">
+
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100">
+                  <Wrench
+                    size={21}
+                    className="text-emerald-600"
+                  />
+                </div>
+
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900">
+                    Resolve Risk
+                  </h2>
+
+                  <p className="mt-1 text-sm text-gray-500">
+                    Select the corrective action and record what was done.
+                  </p>
+                </div>
+
+              </div>
+
+              <button
+                type="button"
+                onClick={closeResolveModal}
+                disabled={
+                  actionLoading !== null
+                }
+                className="
+                  rounded-lg
+                  p-2
+                  text-gray-400
+                  transition
+                  hover:bg-gray-100
+                  hover:text-gray-700
+                  disabled:opacity-50
+                "
+              >
+                <X size={20} />
+              </button>
+
+            </div>
+
+            {/* BODY */}
+
+            <div className="space-y-5 p-5">
+
+              {/* RISK */}
+
+              <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+
+                <div className="flex flex-wrap items-center gap-2">
+
+                  <h3 className="font-semibold text-gray-900">
+                    {resolutionRisk.title}
+                  </h3>
+
+                  <span
+                    className={`
+                      rounded-full
+                      border
+                      px-2.5
+                      py-1
+                      text-xs
+                      font-semibold
+                      capitalize
+                      ${getSeverityClass(
+                        resolutionRisk.severity
+                      )}
+                    `}
+                  >
+                    {resolutionRisk.severity}
+                  </span>
+
+                </div>
+
+                <p className="mt-2 text-sm text-gray-600">
+                  {resolutionRisk.description}
+                </p>
+
+              </div>
+
+              {/* ACTION */}
+
+              <div>
+
+                <label className="mb-2 block text-sm font-semibold text-gray-800">
+                  Resolution Action
+                  <span className="ml-1 text-red-500">
+                    *
+                  </span>
+                </label>
+
+                <select
+                  value={resolutionAction}
+                  onChange={(event) =>
+                    setResolutionAction(
+                      event.target.value as
+                        | ResolutionAction
+                        | ""
+                    )
+                  }
+                  disabled={
+                    actionLoading !== null
+                  }
+                  className="
+                    w-full
+                    rounded-xl
+                    border
+                    border-gray-300
+                    bg-white
+                    px-4
+                    py-3
+                    text-sm
+                    text-gray-700
+                    outline-none
+                    transition
+                    focus:border-emerald-500
+                    focus:ring-2
+                    focus:ring-emerald-100
+                    disabled:bg-gray-100
+                  "
+                >
+
+                  <option value="">
+                    Select resolution action
+                  </option>
+
+                  <option value="reset_password">
+                    Reset Password
+                  </option>
+
+                  <option value="disable_account">
+                    Disable Account
+                  </option>
+
+                  <option value="unlock_account">
+                    Unlock Account
+                  </option>
+
+                  <option value="notify_user">
+                    Notify User Only
+                  </option>
+
+                  <option value="manual_fix">
+                    Manual Fix
+                  </option>
+
+                </select>
+
+                <p className="mt-2 text-xs text-gray-500">
+                  Choose the corrective action that was performed to resolve this risk.
+                </p>
+
+              </div>
+
+              {/* ACTION DESCRIPTION */}
+
+              {resolutionAction && (
+                <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-4">
+
+                  <div className="flex items-start gap-3">
+
+                    {resolutionAction ===
+                      "reset_password" && (
+                      <KeyRound
+                        size={19}
+                        className="mt-0.5 text-emerald-600"
+                      />
+                    )}
+
+                    {resolutionAction ===
+                      "disable_account" && (
+                      <UserX
+                        size={19}
+                        className="mt-0.5 text-emerald-600"
+                      />
+                    )}
+
+                    {resolutionAction ===
+                      "unlock_account" && (
+                      <LockKeyhole
+                        size={19}
+                        className="mt-0.5 text-emerald-600"
+                      />
+                    )}
+
+                    {resolutionAction ===
+                      "notify_user" && (
+                      <Bell
+                        size={19}
+                        className="mt-0.5 text-emerald-600"
+                      />
+                    )}
+
+                    {resolutionAction ===
+                      "manual_fix" && (
+                      <Wrench
+                        size={19}
+                        className="mt-0.5 text-emerald-600"
+                      />
+                    )}
+
+                    <p className="text-sm leading-6 text-emerald-800">
+
+                      {resolutionAction ===
+                        "reset_password" &&
+                        "A temporary password will be generated and the user will be required to change it."}
+
+                      {resolutionAction ===
+                        "disable_account" &&
+                        "The associated user's account will be disabled."}
+
+                      {resolutionAction ===
+                        "unlock_account" &&
+                        "The associated user's account will be activated/unlocked."}
+
+                      {resolutionAction ===
+                        "notify_user" &&
+                        "A security notification will be sent to the associated user."}
+
+                      {resolutionAction ===
+                        "manual_fix" &&
+                        "The risk will be recorded as manually fixed by the administrator."}
+
+                    </p>
+
+                  </div>
+
+                </div>
+              )}
+
+              {/* NOTE */}
+
+              <div>
+
+                <label className="mb-2 block text-sm font-semibold text-gray-800">
+                  Resolution Note
+                  <span className="ml-1 text-red-500">
+                    *
+                  </span>
+                </label>
+
+                <textarea
+                  value={resolutionNote}
+                  onChange={(event) =>
+                    setResolutionNote(
+                      event.target.value
+                    )
+                  }
+                  disabled={
+                    actionLoading !== null
+                  }
+                  rows={5}
+                  placeholder="Explain what was done to resolve this risk..."
+                  className="
+                    w-full
+                    resize-none
+                    rounded-xl
+                    border
+                    border-gray-300
+                    bg-white
+                    px-4
+                    py-3
+                    text-sm
+                    text-gray-700
+                    outline-none
+                    transition
+                    placeholder:text-gray-400
+                    focus:border-emerald-500
+                    focus:ring-2
+                    focus:ring-emerald-100
+                    disabled:bg-gray-100
+                  "
+                />
+
+                <p className="mt-2 text-xs text-gray-500">
+                  This note will be saved with the risk and included in the activity history.
+                </p>
+
+              </div>
+
+            </div>
+
+            {/* FOOTER */}
+
+            <div className="flex flex-col-reverse gap-3 border-t border-gray-100 p-5 sm:flex-row sm:justify-end">
+
+              <button
+                type="button"
+                onClick={closeResolveModal}
+                disabled={
+                  actionLoading !== null
+                }
+                className="
+                  rounded-xl
+                  border
+                  border-gray-300
+                  bg-white
+                  px-5
+                  py-2.5
+                  text-sm
+                  font-semibold
+                  text-gray-700
+                  transition
+                  hover:bg-gray-50
+                  disabled:cursor-not-allowed
+                  disabled:opacity-50
+                "
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={
+                  handleConfirmResolution
+                }
+                disabled={
+                  actionLoading !== null ||
+                  !resolutionAction ||
+                  !resolutionNote.trim()
+                }
+                className="
+                  inline-flex
+                  items-center
+                  justify-center
+                  gap-2
+                  rounded-xl
+                  bg-emerald-600
+                  px-5
+                  py-2.5
+                  text-sm
+                  font-semibold
+                  text-white
+                  transition
+                  hover:bg-emerald-700
+                  disabled:cursor-not-allowed
+                  disabled:opacity-50
+                "
+              >
+
+                {actionLoading ===
+                resolutionRisk.id ? (
+                  <>
+                    <Loader2
+                      size={17}
+                      className="animate-spin"
+                    />
+                    Resolving...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 size={17} />
+                    Confirm Resolution
+                  </>
+                )}
+
               </button>
 
             </div>
