@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+
 import {
   ShieldCheck,
   CheckCircle,
@@ -25,7 +26,7 @@ interface FreelancerProfile {
   professional_title: string | null;
   category: string | null;
   city: string | null;
-  skills: string[] | null;
+  skills: string[] | string | null;
   about: string | null;
   linkedin_url: string | null;
   github_url: string | null;
@@ -41,7 +42,7 @@ interface ClientProfile {
   city: string | null;
   about: string | null;
   requirements: string | null;
-  preferred_skills: string[] | null;
+  preferred_skills: string[] | string | null;
   company_website: string | null;
   profile_image: string | null;
   linkedin_url: string | null;
@@ -78,11 +79,14 @@ export default function VerificationPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const [processingId, setProcessingId] =
-    useState<number | null>(null);
+  const [processingId, setProcessingId] = useState<number | null>(null);
 
   const [selectedRequest, setSelectedRequest] =
     useState<VerificationRequest | null>(null);
+
+  // ============================================
+  // ADMIN AUTHENTICATION
+  // ============================================
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
@@ -111,7 +115,7 @@ export default function VerificationPage() {
   }, [router]);
 
   // ============================================
-  // FETCH REQUESTS
+  // FETCH PENDING VERIFICATION REQUESTS
   // ============================================
 
   const fetchRequests = async (adminId: number) => {
@@ -127,17 +131,13 @@ export default function VerificationPage() {
 
       if (!response.ok) {
         throw new Error(
-          data.message ||
-            "Failed to load verification requests."
+          data.message || "Failed to load verification requests."
         );
       }
 
       setRequests(data.requests || []);
     } catch (error) {
-      console.error(
-        "Error fetching verification requests:",
-        error
-      );
+      console.error("Error fetching verification requests:", error);
 
       setError(
         error instanceof Error
@@ -150,7 +150,7 @@ export default function VerificationPage() {
   };
 
   // ============================================
-  // APPROVE
+  // APPROVE VERIFICATION
   // ============================================
 
   const handleApprove = async (id: number) => {
@@ -182,24 +182,16 @@ export default function VerificationPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(
-          data.message ||
-            "Failed to approve request."
-        );
+        throw new Error(data.message || "Failed to approve request.");
       }
 
       setRequests((currentRequests) =>
-        currentRequests.filter(
-          (request) => request.id !== id
-        )
+        currentRequests.filter((request) => request.id !== id)
       );
 
       setSelectedRequest(null);
     } catch (error) {
-      console.error(
-        "Error approving verification:",
-        error
-      );
+      console.error("Error approving verification:", error);
 
       alert(
         error instanceof Error
@@ -212,13 +204,11 @@ export default function VerificationPage() {
   };
 
   // ============================================
-  // REJECT
+  // REJECT VERIFICATION
   // ============================================
 
   const handleReject = async (id: number) => {
-    const reason = window.prompt(
-      "Enter rejection reason:"
-    );
+    const reason = window.prompt("Enter rejection reason:");
 
     if (!reason || !reason.trim()) {
       return;
@@ -253,24 +243,16 @@ export default function VerificationPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(
-          data.message ||
-            "Failed to reject request."
-        );
+        throw new Error(data.message || "Failed to reject request.");
       }
 
       setRequests((currentRequests) =>
-        currentRequests.filter(
-          (request) => request.id !== id
-        )
+        currentRequests.filter((request) => request.id !== id)
       );
 
       setSelectedRequest(null);
     } catch (error) {
-      console.error(
-        "Error rejecting verification:",
-        error
-      );
+      console.error("Error rejecting verification:", error);
 
       alert(
         error instanceof Error
@@ -300,7 +282,7 @@ export default function VerificationPage() {
 
   const displayValue = (
     value: string | null | undefined
-  ) => {
+  ): string => {
     if (!value || !value.trim()) {
       return "Not provided";
     }
@@ -309,13 +291,64 @@ export default function VerificationPage() {
   };
 
   // ============================================
-  // SKILLS
+  // NORMALIZE SKILLS
+  // ============================================
+
+  const normalizeSkills = (
+    skills: string[] | string | null | undefined
+  ): string[] => {
+    if (!skills) {
+      return [];
+    }
+
+    // Already an array
+    if (Array.isArray(skills)) {
+      return skills
+        .map((skill) => String(skill).trim())
+        .filter(Boolean);
+    }
+
+    // String value
+    if (typeof skills === "string") {
+      const trimmedSkills = skills.trim();
+
+      if (!trimmedSkills) {
+        return [];
+      }
+
+      // Try JSON array first
+      try {
+        const parsedSkills = JSON.parse(trimmedSkills);
+
+        if (Array.isArray(parsedSkills)) {
+          return parsedSkills
+            .map((skill) => String(skill).trim())
+            .filter(Boolean);
+        }
+      } catch {
+        // Not JSON, continue with normal string handling
+      }
+
+      // Handle comma-separated skills
+      return trimmedSkills
+        .split(",")
+        .map((skill) => skill.trim())
+        .filter(Boolean);
+    }
+
+    return [];
+  };
+
+  // ============================================
+  // RENDER SKILLS
   // ============================================
 
   const renderSkills = (
-    skills: string[] | null | undefined
+    skills: string[] | string | null | undefined
   ) => {
-    if (!skills || skills.length === 0) {
+    const normalizedSkills = normalizeSkills(skills);
+
+    if (normalizedSkills.length === 0) {
       return (
         <span className="text-sm text-gray-400">
           Not provided
@@ -325,7 +358,7 @@ export default function VerificationPage() {
 
     return (
       <div className="flex flex-wrap gap-2">
-        {skills.map((skill, index) => (
+        {normalizedSkills.map((skill, index) => (
           <span
             key={`${skill}-${index}`}
             className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700"
@@ -347,8 +380,7 @@ export default function VerificationPage() {
     }
 
     const isFreelancer =
-      selectedRequest.profile_type ===
-      "freelancer";
+      selectedRequest.profile_type === "freelancer";
 
     const freelancer =
       selectedRequest.freelancer_profile;
@@ -379,8 +411,7 @@ export default function VerificationPage() {
               </h2>
 
               <p className="mt-1 text-sm text-gray-500">
-                Review the information submitted by
-                the user.
+                Review the information submitted by the user.
               </p>
             </div>
 
@@ -407,21 +438,15 @@ export default function VerificationPage() {
                   {isFreelancer &&
                   freelancer?.profile_picture ? (
                     <img
-                      src={
-                        freelancer.profile_picture
-                      }
-                      alt={
-                        selectedRequest.user.fullname
-                      }
+                      src={freelancer.profile_picture}
+                      alt={selectedRequest.user.fullname}
                       className="h-full w-full object-cover"
                     />
                   ) : !isFreelancer &&
                     client?.profile_image ? (
                     <img
                       src={client.profile_image}
-                      alt={
-                        selectedRequest.user.fullname
-                      }
+                      alt={selectedRequest.user.fullname}
                       className="h-full w-full object-cover"
                     />
                   ) : (
@@ -523,9 +548,7 @@ export default function VerificationPage() {
                         </div>
 
                         <p className="mt-2 text-sm text-gray-800">
-                          {displayValue(
-                            freelancer.city
-                          )}
+                          {displayValue(freelancer.city)}
                         </p>
                       </div>
                     </div>
@@ -537,9 +560,7 @@ export default function VerificationPage() {
                         Skills
                       </p>
 
-                      {renderSkills(
-                        freelancer.skills
-                      )}
+                      {renderSkills(freelancer.skills)}
                     </div>
 
                     {/* ABOUT */}
@@ -550,9 +571,7 @@ export default function VerificationPage() {
                       </p>
 
                       <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-gray-700">
-                        {displayValue(
-                          freelancer.about
-                        )}
+                        {displayValue(freelancer.about)}
                       </p>
                     </div>
 
@@ -566,16 +585,12 @@ export default function VerificationPage() {
                       <div className="space-y-2">
                         {freelancer.linkedin_url ? (
                           <a
-                            href={
-                              freelancer.linkedin_url
-                            }
+                            href={freelancer.linkedin_url}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-blue-600 transition hover:bg-blue-50"
                           >
-                            <ExternalLink
-                              size={16}
-                            />
+                            <ExternalLink size={16} />
                             LinkedIn
                           </a>
                         ) : (
@@ -586,16 +601,12 @@ export default function VerificationPage() {
 
                         {freelancer.github_url ? (
                           <a
-                            href={
-                              freelancer.github_url
-                            }
+                            href={freelancer.github_url}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-gray-700 transition hover:bg-gray-100"
                           >
-                            <ExternalLink
-                              size={16}
-                            />
+                            <ExternalLink size={16} />
                             GitHub
                           </a>
                         ) : (
@@ -606,16 +617,12 @@ export default function VerificationPage() {
 
                         {freelancer.google_drive_url ? (
                           <a
-                            href={
-                              freelancer.google_drive_url
-                            }
+                            href={freelancer.google_drive_url}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-gray-700 transition hover:bg-gray-100"
                           >
-                            <ExternalLink
-                              size={16}
-                            />
+                            <ExternalLink size={16} />
                             Google Drive
                           </a>
                         ) : (
@@ -626,16 +633,12 @@ export default function VerificationPage() {
 
                         {freelancer.resume_url ? (
                           <a
-                            href={
-                              freelancer.resume_url
-                            }
+                            href={freelancer.resume_url}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-emerald-700 transition hover:bg-emerald-50"
                           >
-                            <FileText
-                              size={16}
-                            />
+                            <FileText size={16} />
                             View Resume
                           </a>
                         ) : (
@@ -675,9 +678,7 @@ export default function VerificationPage() {
                       </p>
 
                       <p className="mt-1 text-sm text-gray-800">
-                        {displayValue(
-                          client.full_name
-                        )}
+                        {displayValue(client.full_name)}
                       </p>
                     </div>
 
@@ -702,9 +703,7 @@ export default function VerificationPage() {
                         </p>
 
                         <p className="mt-2 text-sm text-gray-800">
-                          {displayValue(
-                            client.industry
-                          )}
+                          {displayValue(client.industry)}
                         </p>
                       </div>
                     </div>
@@ -775,16 +774,12 @@ export default function VerificationPage() {
 
                       {client.company_website ? (
                         <a
-                          href={
-                            client.company_website
-                          }
+                          href={client.company_website}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="mt-2 flex items-center gap-2 break-all text-sm text-blue-600 hover:underline"
                         >
-                          <ExternalLink
-                            size={16}
-                          />
+                          <ExternalLink size={16} />
                           {client.company_website}
                         </a>
                       ) : (
@@ -804,16 +799,12 @@ export default function VerificationPage() {
                       <div className="space-y-2">
                         {client.linkedin_url ? (
                           <a
-                            href={
-                              client.linkedin_url
-                            }
+                            href={client.linkedin_url}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-blue-600 transition hover:bg-blue-50"
                           >
-                            <ExternalLink
-                              size={16}
-                            />
+                            <ExternalLink size={16} />
                             LinkedIn
                           </a>
                         ) : (
@@ -824,16 +815,12 @@ export default function VerificationPage() {
 
                         {client.github_url ? (
                           <a
-                            href={
-                              client.github_url
-                            }
+                            href={client.github_url}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-gray-700 transition hover:bg-gray-100"
                           >
-                            <ExternalLink
-                              size={16}
-                            />
+                            <ExternalLink size={16} />
                             GitHub
                           </a>
                         ) : (
@@ -844,16 +831,12 @@ export default function VerificationPage() {
 
                         {client.google_drive_url ? (
                           <a
-                            href={
-                              client.google_drive_url
-                            }
+                            href={client.google_drive_url}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-gray-700 transition hover:bg-gray-100"
                           >
-                            <ExternalLink
-                              size={16}
-                            />
+                            <ExternalLink size={16} />
                             Google Drive
                           </a>
                         ) : (
@@ -897,15 +880,13 @@ export default function VerificationPage() {
                   handleReject(selectedRequest.id)
                 }
                 disabled={
-                  processingId ===
-                  selectedRequest.id
+                  processingId === selectedRequest.id
                 }
                 className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-3 text-sm font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <XCircle size={18} />
 
-                {processingId ===
-                selectedRequest.id
+                {processingId === selectedRequest.id
                   ? "Processing..."
                   : "Reject"}
               </button>
@@ -916,15 +897,13 @@ export default function VerificationPage() {
                   handleApprove(selectedRequest.id)
                 }
                 disabled={
-                  processingId ===
-                  selectedRequest.id
+                  processingId === selectedRequest.id
                 }
                 className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <CheckCircle size={18} />
 
-                {processingId ===
-                selectedRequest.id
+                {processingId === selectedRequest.id
                   ? "Processing..."
                   : "Approve"}
               </button>
@@ -956,8 +935,8 @@ export default function VerificationPage() {
               </h1>
 
               <p className="mt-1 text-sm text-gray-500">
-                Review and manage pending user
-                verification requests.
+                Review and manage pending user verification
+                requests.
               </p>
             </div>
           </div>
@@ -1057,13 +1036,10 @@ export default function VerificationPage() {
                         <button
                           type="button"
                           onClick={() =>
-                            setSelectedRequest(
-                              request
-                            )
+                            setSelectedRequest(request)
                           }
                           disabled={
-                            processingId ===
-                            request.id
+                            processingId === request.id
                           }
                           className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
                         >
@@ -1076,13 +1052,10 @@ export default function VerificationPage() {
                         <button
                           type="button"
                           onClick={() =>
-                            handleApprove(
-                              request.id
-                            )
+                            handleApprove(request.id)
                           }
                           disabled={
-                            processingId ===
-                            request.id
+                            processingId === request.id
                           }
                           className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
                         >
@@ -1095,13 +1068,10 @@ export default function VerificationPage() {
                         <button
                           type="button"
                           onClick={() =>
-                            handleReject(
-                              request.id
-                            )
+                            handleReject(request.id)
                           }
                           disabled={
-                            processingId ===
-                            request.id
+                            processingId === request.id
                           }
                           className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
                         >
