@@ -29,7 +29,9 @@ const securityReportRoutes = require("./routes/securityReportRoutes");
 const riskRoutes = require("./routes/riskRoutes");
 const passwordResetRoutes = require("./routes/passwordResetRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
-
+const adminUserRoutes = require("./routes/adminUserRoutes");
+const adminProjectRoutes = require("./routes/adminProjectRoutes");
+const reportRoutes = require("./routes/reportRoutes");
 // ======================================================
 // CORS
 // ======================================================
@@ -208,9 +210,22 @@ app.use(
 );
 
 app.use(
-  "/api/admin", 
+  "/api/admin",
   dashboardRoutes
 );
+
+app.use(
+  "/api/admin",
+  adminUserRoutes
+);
+
+app.use(
+  "/api/admin",
+  adminProjectRoutes
+);
+
+app.use("/api/admin", reportRoutes);
+app.use("/api", reportRoutes);
 
 // ======================================================
 // HOME

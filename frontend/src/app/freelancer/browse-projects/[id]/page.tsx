@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 
 import DashboardLayout from "../../../components/layout/DashboardLayout";
-
 import {
   ArrowLeft,
   BriefcaseBusiness,
@@ -12,6 +11,7 @@ import {
   DollarSign,
   Clock,
   Send,
+  Flag,
 } from "lucide-react";
 
 interface Project {
@@ -52,10 +52,17 @@ export default function ProjectDetailsPage() {
   const [coverLetter, setCoverLetter] = useState("");
   const [proposedBudget, setProposedBudget] = useState("");
   const [deliveryTime, setDeliveryTime] = useState("");
-
   const [submitting, setSubmitting] = useState(false);
   const [proposalMessage, setProposalMessage] = useState("");
   const [proposalError, setProposalError] = useState("");
+
+  // Report states
+  const [showReportForm, setShowReportForm] = useState(false);
+  const [reportReason, setReportReason] = useState("");
+  const [reportDescription, setReportDescription] = useState("");
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [reportMessage, setReportMessage] = useState("");
+  const [reportError, setReportError] = useState("");
 
   // ============================================
   // CHECK LOGGED-IN FREELANCER
@@ -80,7 +87,6 @@ export default function ProjectDetailsPage() {
       setUser(loggedInUser);
     } catch (error) {
       console.error("INVALID USER DATA:", error);
-
       localStorage.removeItem("user");
       router.push("/login");
     }
@@ -105,9 +111,7 @@ export default function ProjectDetailsPage() {
         const data = await response.json();
 
         if (!response.ok || !data.success) {
-          throw new Error(
-            data.message || "Failed to load project."
-          );
+          throw new Error(data.message || "Failed to load project.");
         }
 
         setProject(data.project);
@@ -132,21 +136,105 @@ export default function ProjectDetailsPage() {
   // ============================================
 
   const handleApplyClick = () => {
-    console.log("APPLY BUTTON CLICKED");
-
     setShowProposalForm(true);
     setProposalMessage("");
     setProposalError("");
 
-    // Put the form near the top of the screen
     setTimeout(() => {
-      document
-        .getElementById("proposal-form")
-        ?.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        });
+      document.getElementById("proposal-form")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
     }, 100);
+  };
+
+  // ============================================
+  // OPEN REPORT FORM
+  // ============================================
+
+  const handleReportClick = () => {
+    setShowReportForm(true);
+    setReportError("");
+    setReportMessage("");
+
+    setTimeout(() => {
+      document.getElementById("report-form")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 100);
+  };
+
+  // ============================================
+  // SUBMIT PROJECT REPORT
+  // ============================================
+
+  const handleSubmitReport = async (
+    event: React.FormEvent<HTMLFormElement>
+  ) => {
+    event.preventDefault();
+
+    if (!user || !project) return;
+
+    if (!reportReason) {
+      setReportError("Please select a reason.");
+      return;
+    }
+
+    if (!reportDescription.trim()) {
+      setReportError("Please describe the issue.");
+      return;
+    }
+
+    try {
+      setReportSubmitting(true);
+      setReportError("");
+      setReportMessage("");
+
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        throw new Error("Please log in again to submit a report.");
+      }
+
+      const response = await fetch("http://localhost:5000/api/reports", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          reported_user_id: project.client_id,
+          project_id: project.id,
+          reason: reportReason,
+          description: reportDescription.trim(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Failed to submit report.");
+      }
+
+      setReportMessage("Your report has been submitted successfully.");
+      setReportReason("");
+      setReportDescription("");
+      setShowReportForm(false);
+
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
+    } catch (error) {
+      setReportError(
+        error instanceof Error
+          ? error.message
+          : "Unable to submit report."
+      );
+    } finally {
+      setReportSubmitting(false);
+    }
   };
 
   // ============================================
@@ -160,7 +248,6 @@ export default function ProjectDetailsPage() {
 
     if (!user || !project) return;
 
-    // Basic validation
     if (!coverLetter.trim()) {
       setProposalError("Please enter a cover letter.");
       return;
@@ -181,46 +268,32 @@ export default function ProjectDetailsPage() {
       setProposalError("");
       setProposalMessage("");
 
-      const response = await fetch(
-        "http://localhost:5000/api/proposals",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            project_id: project.id,
-            freelancer_id: user.id,
-            cover_letter: coverLetter.trim(),
-            proposed_budget: Number(proposedBudget),
-            delivery_time: Number(deliveryTime),
-          }),
-        }
-      );
+      const response = await fetch("http://localhost:5000/api/proposals", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          project_id: project.id,
+          freelancer_id: user.id,
+          cover_letter: coverLetter.trim(),
+          proposed_budget: Number(proposedBudget),
+          delivery_time: Number(deliveryTime),
+        }),
+      });
 
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        throw new Error(
-          data.message || "Failed to submit proposal."
-        );
+        throw new Error(data.message || "Failed to submit proposal.");
       }
 
-      console.log("PROPOSAL SUBMITTED:", data);
-
-      setProposalMessage(
-        "Proposal submitted successfully!"
-      );
-
-      // Clear form
+      setProposalMessage("Proposal submitted successfully!");
       setCoverLetter("");
       setProposedBudget("");
       setDeliveryTime("");
-
-      // Hide form after successful submission
       setShowProposalForm(false);
 
-      // Scroll to top so success message is visible
       window.scrollTo({
         top: 0,
         behavior: "smooth",
@@ -247,7 +320,6 @@ export default function ProjectDetailsPage() {
       <div className="flex min-h-screen items-center justify-center bg-gray-100">
         <div className="text-center">
           <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-emerald-200 border-t-emerald-600" />
-
           <p className="mt-4 text-gray-600">
             Loading project details...
           </p>
@@ -266,20 +338,8 @@ export default function ProjectDetailsPage() {
         <div className="w-full">
           <button
             type="button"
-            onClick={() =>
-              router.push("/freelancer/browse-projects")
-            }
-            className="
-              mb-6
-              flex
-              items-center
-              gap-2
-              text-sm
-              font-medium
-              text-gray-600
-              transition
-              hover:text-emerald-600
-            "
+            onClick={() => router.push("/freelancer/browse-projects")}
+            className="mb-6 flex items-center gap-2 text-sm font-medium text-gray-600 transition hover:text-emerald-600"
           >
             <ArrowLeft size={18} />
             Back to Browse Projects
@@ -287,10 +347,7 @@ export default function ProjectDetailsPage() {
 
           <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-100">
-              <BriefcaseBusiness
-                size={26}
-                className="text-red-600"
-              />
+              <BriefcaseBusiness size={26} className="text-red-600" />
             </div>
 
             <h2 className="mt-4 text-xl font-semibold text-gray-900">
@@ -313,35 +370,16 @@ export default function ProjectDetailsPage() {
   return (
     <DashboardLayout role="freelancer">
       <div className="w-full">
-
-        {/* ============================================ */}
-        {/* BACK BUTTON */}
-        {/* ============================================ */}
-
         <button
           type="button"
-          onClick={() =>
-            router.push("/freelancer/browse-projects")
-          }
-          className="
-            mb-6
-            flex
-            items-center
-            gap-2
-            text-sm
-            font-medium
-            text-gray-600
-            transition
-            hover:text-emerald-600
-          "
+          onClick={() => router.push("/freelancer/browse-projects")}
+          className="mb-6 flex items-center gap-2 text-sm font-medium text-gray-600 transition hover:text-emerald-600"
         >
           <ArrowLeft size={18} />
           Back to Browse Projects
         </button>
 
-        {/* ============================================ */}
-        {/* SUCCESS MESSAGE */}
-        {/* ============================================ */}
+        {/* SUCCESS MESSAGES */}
 
         {proposalMessage && (
           <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-700">
@@ -349,44 +387,34 @@ export default function ProjectDetailsPage() {
           </div>
         )}
 
-        {/* ============================================ */}
+        {reportMessage && (
+          <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-700">
+            {reportMessage}
+          </div>
+        )}
+
         {/* PROJECT CARD */}
-        {/* ============================================ */}
 
         <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
-
-          {/* ============================================ */}
-          {/* HEADER */}
-          {/* ============================================ */}
+          {/* PROJECT HEADER */}
 
           <div className="border-b border-gray-100 p-6 sm:p-8">
-
             <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-start">
-
               <div>
                 <div className="flex flex-wrap items-center gap-3">
-
                   <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
                     {project.title}
                   </h1>
 
                   <span
-                    className={`
-                      rounded-full
-                      px-3
-                      py-1
-                      text-xs
-                      font-semibold
-                      ${
-                        project.status === "open"
-                          ? "bg-emerald-100 text-emerald-700"
-                          : "bg-gray-100 text-gray-700"
-                      }
-                    `}
+                    className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                      project.status === "open"
+                        ? "bg-emerald-100 text-emerald-700"
+                        : "bg-gray-100 text-gray-700"
+                    }`}
                   >
                     {project.status || "Open"}
                   </span>
-
                 </div>
 
                 <p className="mt-3 text-sm font-medium text-emerald-600">
@@ -394,66 +422,40 @@ export default function ProjectDetailsPage() {
                 </p>
               </div>
 
-              {/* ============================================ */}
-              {/* APPLY BUTTON */}
-              {/* ============================================ */}
+              <div className="flex flex-col gap-3 sm:flex-row">
+                {project.status === "open" ? (
+                  <button
+                    type="button"
+                    onClick={handleApplyClick}
+                    className="w-full rounded-xl bg-emerald-600 px-6 py-3 font-semibold text-white shadow-sm transition hover:bg-emerald-700 lg:w-auto"
+                  >
+                    Apply for Project
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled
+                    className="w-full cursor-not-allowed rounded-xl bg-gray-400 px-6 py-3 font-semibold text-white lg:w-auto"
+                  >
+                    Project Unavailable
+                  </button>
+                )}
 
-              {project.status === "open" && (
                 <button
                   type="button"
-                  onClick={handleApplyClick}
-                  className="
-                    w-full
-                    rounded-xl
-                    bg-emerald-600
-                    px-6
-                    py-3
-                    font-semibold
-                    text-white
-                    shadow-sm
-                    transition
-                    hover:bg-emerald-700
-                    lg:w-auto
-                  "
+                  onClick={handleReportClick}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-red-200 px-6 py-3 font-semibold text-red-600 transition hover:bg-red-50 lg:w-auto"
                 >
-                  Apply for Project
+                  <Flag size={18} />
+                  Report Project
                 </button>
-              )}
-
-              {project.status !== "open" && (
-                <button
-                  type="button"
-                  disabled
-                  className="
-                    w-full
-                    cursor-not-allowed
-                    rounded-xl
-                    bg-gray-400
-                    px-6
-                    py-3
-                    font-semibold
-                    text-white
-                    lg:w-auto
-                  "
-                >
-                  Project Unavailable
-                </button>
-              )}
-
+              </div>
             </div>
-
           </div>
 
-          {/* ============================================ */}
           {/* PROJECT CONTENT */}
-          {/* ============================================ */}
 
           <div className="p-6 sm:p-8">
-
-            {/* ============================================ */}
-            {/* DESCRIPTION */}
-            {/* ============================================ */}
-
             <section>
               <h2 className="text-lg font-semibold text-gray-900">
                 Project Description
@@ -464,164 +466,91 @@ export default function ProjectDetailsPage() {
               </p>
             </section>
 
-            {/* ============================================ */}
-            {/* PROJECT INFORMATION */}
-            {/* ============================================ */}
-
             <section className="mt-8">
-
               <h2 className="text-lg font-semibold text-gray-900">
                 Project Information
               </h2>
 
-              <div
-                className="
-                  mt-4
-                  grid
-                  grid-cols-1
-                  gap-4
-                  sm:grid-cols-3
-                "
-              >
-
-                {/* BUDGET */}
-
+              <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <div className="rounded-xl bg-gray-50 p-4">
                   <div className="flex items-center gap-3">
-
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100">
-                      <DollarSign
-                        size={20}
-                        className="text-emerald-600"
-                      />
+                      <DollarSign size={20} className="text-emerald-600" />
                     </div>
 
                     <div>
-                      <p className="text-xs text-gray-500">
-                        Budget
-                      </p>
-
+                      <p className="text-xs text-gray-500">Budget</p>
                       <p className="mt-1 font-semibold text-gray-900">
                         ${Number(project.budget).toFixed(2)}
                       </p>
                     </div>
-
                   </div>
                 </div>
 
-                {/* DEADLINE */}
-
                 <div className="rounded-xl bg-gray-50 p-4">
                   <div className="flex items-center gap-3">
-
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100">
-                      <CalendarDays
-                        size={20}
-                        className="text-blue-600"
-                      />
+                      <CalendarDays size={20} className="text-blue-600" />
                     </div>
 
                     <div>
-                      <p className="text-xs text-gray-500">
-                        Deadline
-                      </p>
-
+                      <p className="text-xs text-gray-500">Deadline</p>
                       <p className="mt-1 font-semibold text-gray-900">
-                        {new Date(
-                          project.deadline
-                        ).toLocaleDateString()}
+                        {new Date(project.deadline).toLocaleDateString()}
                       </p>
                     </div>
-
                   </div>
                 </div>
 
-                {/* BUDGET TYPE */}
-
                 <div className="rounded-xl bg-gray-50 p-4">
                   <div className="flex items-center gap-3">
-
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-100">
-                      <Clock
-                        size={20}
-                        className="text-purple-600"
-                      />
+                      <Clock size={20} className="text-purple-600" />
                     </div>
 
                     <div>
-                      <p className="text-xs text-gray-500">
-                        Budget Type
-                      </p>
-
+                      <p className="text-xs text-gray-500">Budget Type</p>
                       <p className="mt-1 font-semibold capitalize text-gray-900">
                         {project.budget_type}
                       </p>
                     </div>
-
                   </div>
                 </div>
-
               </div>
             </section>
 
-            {/* ============================================ */}
-            {/* SKILLS */}
-            {/* ============================================ */}
-
             {project.skills && (
               <section className="mt-8">
-
                 <h2 className="text-lg font-semibold text-gray-900">
                   Required Skills
                 </h2>
 
                 <div className="mt-4 flex flex-wrap gap-2">
-
-                  {project.skills
-                    .split(",")
-                    .map((skill) => (
-                      <span
-                        key={skill.trim()}
-                        className="
-                          rounded-full
-                          bg-gray-100
-                          px-4
-                          py-2
-                          text-sm
-                          font-medium
-                          text-gray-700
-                        "
-                      >
-                        {skill.trim()}
-                      </span>
-                    ))}
-
+                  {project.skills.split(",").map((skill) => (
+                    <span
+                      key={skill.trim()}
+                      className="rounded-full bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700"
+                    >
+                      {skill.trim()}
+                    </span>
+                  ))}
                 </div>
-
               </section>
             )}
 
-            {/* ============================================ */}
-            {/* PROJECT ID */}
-            {/* ============================================ */}
-
             <div className="mt-8 border-t border-gray-100 pt-5">
-
               <p className="text-sm text-gray-500">
                 Project ID:{" "}
                 <span className="font-medium text-gray-700">
                   #{project.id}
                 </span>
               </p>
-
             </div>
-
           </div>
         </div>
 
         {/* ============================================ */}
         {/* PROPOSAL FORM */}
-        {/* IMPORTANT: OUTSIDE PROJECT ERROR BLOCK */}
         {/* ============================================ */}
 
         {showProposalForm && (
@@ -629,31 +558,20 @@ export default function ProjectDetailsPage() {
             id="proposal-form"
             className="mt-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8"
           >
-
-            {/* FORM HEADER */}
-
             <div className="mb-6 flex items-center gap-3">
-
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100">
-                <Send
-                  size={20}
-                  className="text-emerald-600"
-                />
+                <Send size={20} className="text-emerald-600" />
               </div>
 
               <div>
                 <h2 className="text-xl font-bold text-gray-900">
                   Submit Your Proposal
                 </h2>
-
                 <p className="text-sm text-gray-500">
                   Tell the client why you are a good fit for this project.
                 </p>
               </div>
-
             </div>
-
-            {/* ERROR MESSAGE */}
 
             {proposalError && (
               <div className="mb-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-600">
@@ -661,17 +579,8 @@ export default function ProjectDetailsPage() {
               </div>
             )}
 
-            {/* FORM */}
-
-            <form
-              onSubmit={handleSubmitProposal}
-              className="space-y-5"
-            >
-
-              {/* COVER LETTER */}
-
+            <form onSubmit={handleSubmitProposal} className="space-y-5">
               <div>
-
                 <label
                   htmlFor="coverLetter"
                   className="mb-2 block text-sm font-semibold text-gray-700"
@@ -682,39 +591,16 @@ export default function ProjectDetailsPage() {
                 <textarea
                   id="coverLetter"
                   value={coverLetter}
-                  onChange={(event) =>
-                    setCoverLetter(event.target.value)
-                  }
+                  onChange={(event) => setCoverLetter(event.target.value)}
                   required
                   rows={6}
                   placeholder="Explain your experience, approach, and why you are suitable for this project..."
-                  className="
-                    w-full
-                    rounded-xl
-                    border
-                    border-gray-300
-                    px-4
-                    py-3
-                    text-sm
-                    text-gray-900
-                    outline-none
-                    transition
-                    focus:border-emerald-500
-                    focus:ring-2
-                    focus:ring-emerald-100
-                  "
+                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
                 />
-
               </div>
 
-              {/* BUDGET + DELIVERY */}
-
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-
-                {/* PROPOSED BUDGET */}
-
                 <div>
-
                   <label
                     htmlFor="proposedBudget"
                     className="mb-2 block text-sm font-semibold text-gray-700"
@@ -723,7 +609,6 @@ export default function ProjectDetailsPage() {
                   </label>
 
                   <div className="relative">
-
                     <DollarSign
                       size={18}
                       className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
@@ -740,32 +625,12 @@ export default function ProjectDetailsPage() {
                       }
                       required
                       placeholder={String(project.budget)}
-                      className="
-                        w-full
-                        rounded-xl
-                        border
-                        border-gray-300
-                        py-3
-                        pl-10
-                        pr-4
-                        text-sm
-                        text-gray-900
-                        outline-none
-                        transition
-                        focus:border-emerald-500
-                        focus:ring-2
-                        focus:ring-emerald-100
-                      "
+                      className="w-full rounded-xl border border-gray-300 py-3 pl-10 pr-4 text-sm text-gray-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
                     />
-
                   </div>
-
                 </div>
 
-                {/* DELIVERY TIME */}
-
                 <div>
-
                   <label
                     htmlFor="deliveryTime"
                     className="mb-2 block text-sm font-semibold text-gray-700"
@@ -774,7 +639,6 @@ export default function ProjectDetailsPage() {
                   </label>
 
                   <div className="relative">
-
                     <Clock
                       size={18}
                       className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
@@ -790,40 +654,17 @@ export default function ProjectDetailsPage() {
                       }
                       required
                       placeholder="14"
-                      className="
-                        w-full
-                        rounded-xl
-                        border
-                        border-gray-300
-                        py-3
-                        pl-10
-                        pr-4
-                        text-sm
-                        text-gray-900
-                        outline-none
-                        transition
-                        focus:border-emerald-500
-                        focus:ring-2
-                        focus:ring-emerald-100
-                      "
+                      className="w-full rounded-xl border border-gray-300 py-3 pl-10 pr-4 text-sm text-gray-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
                     />
-
                   </div>
 
                   <p className="mt-1 text-xs text-gray-500">
                     Number of days
                   </p>
-
                 </div>
-
               </div>
 
-              {/* ACTION BUTTONS */}
-
               <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:justify-end">
-
-                {/* CANCEL */}
-
                 <button
                   type="button"
                   onClick={() => {
@@ -831,60 +672,138 @@ export default function ProjectDetailsPage() {
                     setProposalError("");
                   }}
                   disabled={submitting}
-                  className="
-                    rounded-xl
-                    border
-                    border-gray-300
-                    px-6
-                    py-3
-                    font-semibold
-                    text-gray-700
-                    transition
-                    hover:bg-gray-50
-                    disabled:cursor-not-allowed
-                    disabled:opacity-50
-                  "
+                  className="rounded-xl border border-gray-300 px-6 py-3 font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Cancel
                 </button>
 
-                {/* SUBMIT */}
-
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="
-                    inline-flex
-                    items-center
-                    justify-center
-                    gap-2
-                    rounded-xl
-                    bg-emerald-600
-                    px-6
-                    py-3
-                    font-semibold
-                    text-white
-                    shadow-sm
-                    transition
-                    hover:bg-emerald-700
-                    disabled:cursor-not-allowed
-                    disabled:opacity-60
-                  "
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-6 py-3 font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <Send size={18} />
-
-                  {submitting
-                    ? "Submitting..."
-                    : "Submit Proposal"}
+                  {submitting ? "Submitting..." : "Submit Proposal"}
                 </button>
-
               </div>
-
             </form>
-
           </div>
         )}
 
+        {/* ============================================ */}
+        {/* REPORT PROJECT FORM */}
+        {/* Separate from the proposal form */}
+        {/* ============================================ */}
+
+        {showReportForm && (
+          <div
+            id="report-form"
+            className="mt-6 rounded-2xl border border-red-200 bg-white p-6 shadow-sm sm:p-8"
+          >
+            <div className="mb-6 flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-100">
+                <Flag size={20} className="text-red-600" />
+              </div>
+
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">
+                  Report This Project
+                </h2>
+                <p className="text-sm text-gray-500">
+                  Tell the administration why this project needs to be reviewed.
+                </p>
+              </div>
+            </div>
+
+            {reportError && (
+              <div
+                role="alert"
+                className="mb-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-600"
+              >
+                {reportError}
+              </div>
+            )}
+
+            <form onSubmit={handleSubmitReport} className="space-y-5">
+              <div>
+                <label
+                  htmlFor="reportReason"
+                  className="mb-2 block text-sm font-semibold text-gray-700"
+                >
+                  Reason for Report
+                </label>
+
+                <select
+                  id="reportReason"
+                  value={reportReason}
+                  onChange={(event) => setReportReason(event.target.value)}
+                  required
+                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                >
+                  <option value="">Select a reason</option>
+                  <option value="Fraud or scam">Fraud or scam</option>
+                  <option value="Inappropriate content">Inappropriate content</option>
+                  <option value="Misleading project details">
+                    Misleading project details
+                  </option>
+                  <option value="Suspicious activity">Suspicious activity</option>
+                  <option value="Policy violation">Policy violation</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="reportDescription"
+                  className="mb-2 block text-sm font-semibold text-gray-700"
+                >
+                  Describe the Issue
+                </label>
+
+                <textarea
+                  id="reportDescription"
+                  value={reportDescription}
+                  onChange={(event) =>
+                    setReportDescription(event.target.value)
+                  }
+                  required
+                  minLength={10}
+                  maxLength={2000}
+                  rows={5}
+                  placeholder="Explain what happened and why you believe this project should be reviewed..."
+                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                />
+
+                <p className="mt-1 text-xs text-gray-500">
+                  Please provide at least 10 characters.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowReportForm(false);
+                    setReportError("");
+                  }}
+                  disabled={reportSubmitting}
+                  className="rounded-xl border border-gray-300 px-6 py-3 font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={reportSubmitting}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <Flag size={18} />
+                  {reportSubmitting ? "Submitting Report..." : "Submit Report"}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );

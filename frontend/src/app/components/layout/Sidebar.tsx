@@ -79,10 +79,17 @@ export default function Sidebar({ role }: SidebarProps) {
       href: "/profile",
     },
     {
-      title: "Manage Users",
-      icon: Users,
-      href: "#",
-    },
+  title: "Manage Users",
+  icon: Users,
+  href: "/admin/users",
+},
+
+{
+  title: "Manage Projects",
+  icon: Briefcase,
+  href: "/admin/projects",
+},
+
     {
       title: "User Verification",
       icon: ShieldCheck,
@@ -106,7 +113,7 @@ export default function Sidebar({ role }: SidebarProps) {
     {
       title: "Reports",
       icon: FileText,
-      href: "#",
+   href: "/admin/reports",
     },
   ];
 
