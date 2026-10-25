@@ -32,6 +32,9 @@ const dashboardRoutes = require("./routes/dashboardRoutes");
 const adminUserRoutes = require("./routes/adminUserRoutes");
 const adminProjectRoutes = require("./routes/adminProjectRoutes");
 const reportRoutes = require("./routes/reportRoutes");
+const paymentRoutes = require("./routes/paymentRoutes");
+const invoiceRoutes = require("./routes/invoiceRoutes");
+
 // ======================================================
 // CORS
 // ======================================================
@@ -226,6 +229,9 @@ app.use(
 
 app.use("/api/admin", reportRoutes);
 app.use("/api", reportRoutes);
+
+app.use("/api/payments", paymentRoutes);
+app.use("/api/invoices", invoiceRoutes);
 
 // ======================================================
 // HOME
