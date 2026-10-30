@@ -1,7 +1,9 @@
+
 "use client";
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Shield,
   Menu,
@@ -10,12 +12,87 @@ import {
   Search,
 } from "lucide-react";
 
-
 export default function Navbar() {
+  const router = useRouter();
 
   const [open, setOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchError, setSearchError] = useState("");
 
+  // PUBLIC SERVICE CATEGORIES
+  const categories = [
+    "Programming & Tech",
+    "Web Development",
+    "Graphics & Design",
+    "Digital Marketing",
+    "Writing & Translation",
+    "Video & Animation",
+    "AI Services",
+    "Music & Audio",
+    "Business",
+    "Cyber Security",
+    "Mobile Development",
+    "Cloud Computing",
+    "UI/UX Design",
+    "Photography",
+    "Finance & Accounting",
+    "Consulting & Strategy",
+    "Education & Tutoring",
+    "Product & Industrial Design",
+  ];
+
+  // SEARCH CATEGORY
+  const handleSearch = () => {
+    const query = searchQuery.trim().toLowerCase();
+
+    if (!query) {
+      setSearchError("Please enter a service or category.");
+      return;
+    }
+
+    const matchedCategory =
+      categories.find(
+        (category) => category.toLowerCase() === query
+      ) ||
+      categories.find(
+        (category) => category.toLowerCase().startsWith(query)
+      ) ||
+      categories.find(
+        (category) => category.toLowerCase().includes(query)
+      );
+
+    if (!matchedCategory) {
+      setSearchError(
+        "No matching category found. Try searching for another service."
+      );
+      return;
+    }
+
+    setSearchError("");
+    setOpen(false);
+    setSearchOpen(false);
+
+    router.push(
+      `/services?category=${encodeURIComponent(matchedCategory)}`
+    );
+  };
+
+  // HANDLE ENTER KEY
+  const handleSearchKeyDown = (
+    event: React.KeyboardEvent<HTMLInputElement>
+  ) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      handleSearch();
+    }
+  };
+
+  // HANDLE INPUT CHANGE
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    setSearchError("");
+  };
 
   const menuItems = [
     {
@@ -40,10 +117,8 @@ export default function Navbar() {
     },
   ];
 
-
   return (
     <>
-
       {/* ================= NAVBAR ================= */}
 
       <header
@@ -59,7 +134,6 @@ export default function Navbar() {
           shadow-sm
         "
       >
-
         <nav
           className="
             mx-auto
@@ -73,8 +147,6 @@ export default function Navbar() {
             lg:px-8
           "
         >
-
-
           {/* ================= MOBILE NAV ================= */}
 
           <div
@@ -86,7 +158,6 @@ export default function Navbar() {
               lg:hidden
             "
           >
-
             <div
               className="
                 flex
@@ -94,7 +165,6 @@ export default function Navbar() {
                 gap-3
               "
             >
-
               <button
                 onClick={() => {
                   setOpen(true);
@@ -107,14 +177,11 @@ export default function Navbar() {
                   hover:bg-slate-100
                 "
               >
-
                 <Menu
                   size={26}
                   className="text-slate-900"
                 />
-
               </button>
-
 
               <Link
                 href="/"
@@ -124,7 +191,6 @@ export default function Navbar() {
                   gap-2
                 "
               >
-
                 <Shield
                   className="
                     h-6
@@ -133,7 +199,6 @@ export default function Navbar() {
                   "
                 />
 
-
                 <span
                   className="
                     text-lg
@@ -141,19 +206,13 @@ export default function Navbar() {
                     text-slate-900
                   "
                 >
-
                   Freelance
                   <span className="text-emerald-600">
                     Shield
                   </span>
-
                 </span>
-
               </Link>
-
             </div>
-
-
 
             {/* SEARCH + LOGIN */}
 
@@ -164,7 +223,6 @@ export default function Navbar() {
                 gap-1
               "
             >
-
               <button
                 onClick={() => setSearchOpen(!searchOpen)}
                 className="
@@ -176,12 +234,8 @@ export default function Navbar() {
                   hover:text-emerald-600
                 "
               >
-
-                <Search size={22}/>
-
+                <Search size={22} />
               </button>
-
-
 
               <Link
                 href="/login"
@@ -197,22 +251,12 @@ export default function Navbar() {
                   hover:text-emerald-600
                 "
               >
-
                 Login
-
               </Link>
-
             </div>
-
-
           </div>
 
-
-
-
-
           {/* ================= DESKTOP LOGO ================= */}
-
 
           <Link
             href="/"
@@ -223,7 +267,6 @@ export default function Navbar() {
               lg:flex
             "
           >
-
             <span
               className="
                 flex
@@ -236,7 +279,6 @@ export default function Navbar() {
                 shadow-md
               "
             >
-
               <Shield
                 className="
                   h-5
@@ -244,10 +286,7 @@ export default function Navbar() {
                   text-white
                 "
               />
-
             </span>
-
-
 
             <span
               className="
@@ -256,84 +295,84 @@ export default function Navbar() {
                 text-slate-900
               "
             >
-
               Freelance
               <span className="text-emerald-600">
                 Shield
               </span>
-
             </span>
-
           </Link>
-
-
-
-
 
           {/* ================= DESKTOP SEARCH ================= */}
 
-
-       <div
-          className="
-          hidden
-          xl:flex
-          w-[550px]
-          h-12
-          items-center
-          overflow-hidden
-          rounded-full
-          border 
-          border-slate-200
-          bg-white
-          shadow-sm
-          transition-all
-          duration-300
-          focus-within:border-emerald-500
-          focus-within:ring-2
-          focus-within:ring-emerald-100
-          hover:shadow-md
-          "
-        >
-
-            <input
-              type="text"
-              placeholder="Search for any services..."
+          <div className="hidden xl:block w-[550px]">
+            <div
               className="
-              flex-1
-              bg-transparent
-              px-5
-              text-sm
-              text-slate-700
-              placeholder:text-slate-400
-              outline-none
-              "
-            />
-
-
-            <button
-                className="
                 flex
-                h-full
-                w-16
+                h-12
                 items-center
-                justify-center
-                bg-emerald-600
-                px-5
-                py-3
-                text-white
-                transition
-                hover:bg-emerald-700
+                overflow-hidden
+                rounded-full
+                border
+                border-slate-200
+                bg-white
+                shadow-sm
+                transition-all
+                duration-300
+                focus-within:border-emerald-500
+                focus-within:ring-2
+                focus-within:ring-emerald-100
+                hover:shadow-md
               "
             >
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(event) =>
+                  handleSearchChange(event.target.value)
+                }
+                onKeyDown={handleSearchKeyDown}
+                placeholder="Search for any services..."
+                className="
+                  flex-1
+                  bg-transparent
+                  px-5
+                  text-sm
+                  text-slate-700
+                  placeholder:text-slate-400
+                  outline-none
+                "
+              />
 
-              <Search size={18}/>
+              <button
+                type="button"
+                onClick={handleSearch}
+                className="
+                  flex
+                  h-full
+                  w-16
+                  items-center
+                  justify-center
+                  bg-emerald-600
+                  px-5
+                  py-3
+                  text-white
+                  transition
+                  hover:bg-emerald-700
+                "
+                aria-label="Search services"
+              >
+                <Search size={18} />
+              </button>
+            </div>
 
-            </button>
-
-
+            {searchError && (
+              <p className="mt-2 px-4 text-xs text-red-600">
+                {searchError}
+              </p>
+            )}
           </div>
 
-                    {/* ================= RIGHT MENU ================= */}
+          {/* ================= RIGHT MENU ================= */}
 
           <div
             className="
@@ -343,7 +382,6 @@ export default function Navbar() {
               lg:flex
             "
           >
-
             <ul
               className="
                 flex
@@ -351,11 +389,8 @@ export default function Navbar() {
                 gap-1
               "
             >
-
               {menuItems.map((item) => (
-
                 <li key={item.name}>
-
                   <Link
                     href={`#${item.href}`}
                     className="
@@ -369,7 +404,6 @@ export default function Navbar() {
                       transition-all
                       duration-300
                       hover:text-emerald-600
-
                       after:absolute
                       after:left-3
                       after:bottom-0
@@ -378,22 +412,14 @@ export default function Navbar() {
                       after:bg-emerald-600
                       after:transition-all
                       after:duration-300
-
                       hover:after:w-[calc(100%-24px)]
                     "
                   >
-
                     {item.name}
-
                   </Link>
-
                 </li>
-
               ))}
-
             </ul>
-
-
 
             <Link
               href="/register"
@@ -412,26 +438,14 @@ export default function Navbar() {
                 hover:bg-emerald-700
               "
             >
-
               Get Started
-
             </Link>
-
-
           </div>
-
-
         </nav>
-
-
-
-
 
         {/* ================= MOBILE SEARCH BOX ================= */}
 
-
         {searchOpen && (
-
           <div
             className="
               absolute
@@ -446,7 +460,6 @@ export default function Navbar() {
               lg:hidden
             "
           >
-
             <div
               className="
                 flex
@@ -458,9 +471,13 @@ export default function Navbar() {
                 bg-slate-50
               "
             >
-
               <input
                 type="text"
+                value={searchQuery}
+                onChange={(event) =>
+                  handleSearchChange(event.target.value)
+                }
+                onKeyDown={handleSearchKeyDown}
                 placeholder="Search for any services..."
                 className="
                   flex-1
@@ -472,8 +489,9 @@ export default function Navbar() {
                 "
               />
 
-
               <button
+                type="button"
+                onClick={handleSearch}
                 className="
                   bg-emerald-600
                   px-4
@@ -482,30 +500,22 @@ export default function Navbar() {
                   transition
                   hover:bg-emerald-700
                 "
+                aria-label="Search services"
               >
-
-                <Search size={18}/>
-
+                <Search size={18} />
               </button>
-
-
             </div>
 
-
+            {searchError && (
+              <p className="mt-2 text-xs text-red-600">
+                {searchError}
+              </p>
+            )}
           </div>
-
         )}
-
-
       </header>
 
-
-
-
-
-
       {/* ================= BACKDROP ================= */}
-
 
       <div
         onClick={() => setOpen(false)}
@@ -517,7 +527,6 @@ export default function Navbar() {
           transition-all
           duration-500
           lg:hidden
-
           ${
             open
               ? "visible opacity-100"
@@ -526,14 +535,7 @@ export default function Navbar() {
         `}
       />
 
-
-
-
-
-
-
       {/* ================= MOBILE DRAWER ================= */}
-
 
       <aside
         className={`
@@ -549,7 +551,6 @@ export default function Navbar() {
           transition-all
           duration-500
           lg:hidden
-
           ${
             open
               ? "translate-x-0"
@@ -557,12 +558,7 @@ export default function Navbar() {
           }
         `}
       >
-
-
-
-
         {/* DRAWER HEADER */}
-
 
         <div
           className="
@@ -575,7 +571,6 @@ export default function Navbar() {
             py-5
           "
         >
-
           <Link
             href="/"
             className="
@@ -584,7 +579,6 @@ export default function Navbar() {
               gap-2
             "
           >
-
             <Shield
               className="
                 h-6
@@ -593,7 +587,6 @@ export default function Navbar() {
               "
             />
 
-
             <span
               className="
                 text-xl
@@ -601,17 +594,12 @@ export default function Navbar() {
                 text-slate-900
               "
             >
-
               Freelance
               <span className="text-emerald-600">
                 Shield
               </span>
-
             </span>
-
           </Link>
-
-
 
           <button
             onClick={() => setOpen(false)}
@@ -622,21 +610,14 @@ export default function Navbar() {
               hover:bg-slate-100
             "
           >
-
-            <X size={26}/>
-
+            <X size={26} />
           </button>
-
-
         </div>
 
-                {/* ================= MOBILE MENU LINKS ================= */}
-
+        {/* ================= MOBILE MENU LINKS ================= */}
 
         <div>
-
           {menuItems.map((item) => (
-
             <Link
               key={item.name}
               href={`#${item.href}`}
@@ -657,30 +638,17 @@ export default function Navbar() {
                 hover:text-emerald-600
               "
             >
-
               {item.name}
-
 
               <ChevronRight
                 size={20}
                 className="text-slate-400"
               />
-
             </Link>
-
           ))}
-
         </div>
 
-
-
-
-
-
-
         {/* ================= MOBILE ACTION BUTTONS ================= */}
-
-
 
         <div
           className="
@@ -691,15 +659,12 @@ export default function Navbar() {
             px-6
           "
         >
-
           <div
             className="
               flex
               gap-4
             "
           >
-
-
             <Link
               href="/register"
               className="
@@ -714,14 +679,8 @@ export default function Navbar() {
                 hover:bg-emerald-700
               "
             >
-
               Sign Up
-
             </Link>
-
-
-
-
 
             <Link
               href="/login"
@@ -738,21 +697,11 @@ export default function Navbar() {
                 hover:bg-slate-50
               "
             >
-
               Login
-
             </Link>
-
-
           </div>
-
-
         </div>
-
-
       </aside>
-
-
     </>
   );
 }
