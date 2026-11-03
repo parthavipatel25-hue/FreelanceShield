@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -26,6 +27,7 @@ import {
   CreditCard,
   Receipt,
   Wallet,
+  KeyRound,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -64,16 +66,41 @@ export default function Sidebar({ role }: SidebarProps) {
 
   // ADMIN MENU
   const adminMenu = [
-    { title: "Dashboard", icon: LayoutDashboard, href: "/admin" },
-    { title: "Profile", icon: User, href: "/profile" },
-    { title: "Manage Users", icon: Users, href: "/admin/users" },
-    { title: "Manage Projects", icon: Briefcase, href: "/admin/projects" },
+    {
+      title: "Dashboard",
+      icon: LayoutDashboard,
+      href: "/admin",
+    },
+    {
+      title: "Profile",
+      icon: User,
+      href: "/profile",
+    },
+    {
+      title: "Manage Users",
+      icon: Users,
+      href: "/admin/users",
+    },
+    {
+      title: "Password Reset Requests",
+      icon: KeyRound,
+      href: "/admin/password-reset-requests",
+    },
+    {
+      title: "Manage Projects",
+      icon: Briefcase,
+      href: "/admin/projects",
+    },
     {
       title: "User Verification",
       icon: ShieldCheck,
       href: "/admin/verification",
     },
-    { title: "Activity Logs", icon: Activity, href: "/admin/activity-logs" },
+    {
+      title: "Activity Logs",
+      icon: Activity,
+      href: "/admin/activity-logs",
+    },
     {
       title: "Security Reports",
       icon: ShieldAlert,
@@ -84,13 +111,25 @@ export default function Sidebar({ role }: SidebarProps) {
       icon: AlertTriangle,
       href: "/admin/risk-management",
     },
-    { title: "Reports", icon: FileText, href: "/admin/reports" },
+    {
+      title: "Reports",
+      icon: FileText,
+      href: "/admin/reports",
+    },
   ];
 
   // FREELANCER MENU
   const freelancerMenu = [
-    { title: "Dashboard", icon: LayoutDashboard, href: "/freelancer" },
-    { title: "Profile", icon: User, href: "/profile" },
+    {
+      title: "Dashboard",
+      icon: LayoutDashboard,
+      href: "/freelancer",
+    },
+    {
+      title: "Profile",
+      icon: User,
+      href: "/profile",
+    },
     {
       title: "Browse Projects",
       icon: Briefcase,
@@ -140,10 +179,26 @@ export default function Sidebar({ role }: SidebarProps) {
 
   // CLIENT MENU
   const clientMenu = [
-    { title: "Dashboard", icon: LayoutDashboard, href: "/client" },
-    { title: "Profile", icon: User, href: "/profile" },
-    { title: "My Projects", icon: FolderOpen, href: "/client/projects" },
-    { title: "Proposals", icon: FileText, href: "/client/proposals" },
+    {
+      title: "Dashboard",
+      icon: LayoutDashboard,
+      href: "/client",
+    },
+    {
+      title: "Profile",
+      icon: User,
+      href: "/profile",
+    },
+    {
+      title: "My Projects",
+      icon: FolderOpen,
+      href: "/client/projects",
+    },
+    {
+      title: "Proposals",
+      icon: FileText,
+      href: "/client/proposals",
+    },
     {
       title: "My Contracts",
       icon: FileSignature,
@@ -288,6 +343,7 @@ export default function Sidebar({ role }: SidebarProps) {
                   }`}
                 >
                   <Icon size={20} className="shrink-0" />
+
                   <span className="truncate">{item.title}</span>
                 </Link>
               );

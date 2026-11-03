@@ -1,3 +1,4 @@
+
 const pool = require("../config/db");
 
 // ============================================
@@ -73,7 +74,6 @@ const getContractById = async (req, res) => {
       success: true,
       contract: result.rows[0],
     });
-
   } catch (error) {
     console.error("GET CONTRACT BY ID ERROR:", error);
 
@@ -146,7 +146,6 @@ const getFreelancerContracts = async (req, res) => {
       success: true,
       contracts: result.rows,
     });
-
   } catch (error) {
     console.error("GET FREELANCER CONTRACTS ERROR:", error);
 
@@ -221,7 +220,6 @@ const getClientContracts = async (req, res) => {
       success: true,
       contracts: result.rows,
     });
-
   } catch (error) {
     console.error("GET CLIENT CONTRACTS ERROR:", error);
 
@@ -249,12 +247,17 @@ const updateContractStatus = async (req, res) => {
       });
     }
 
-    if (!status) {
+    if (
+      typeof status !== "string" ||
+      !status.trim()
+    ) {
       return res.status(400).json({
         success: false,
         message: "Contract status is required.",
       });
     }
+
+    const normalizedStatus = status.trim().toLowerCase();
 
     const allowedStatuses = [
       "active",
@@ -262,7 +265,7 @@ const updateContractStatus = async (req, res) => {
       "cancelled",
     ];
 
-    if (!allowedStatuses.includes(status.toLowerCase())) {
+    if (!allowedStatuses.includes(normalizedStatus)) {
       return res.status(400).json({
         success: false,
         message:
@@ -279,7 +282,7 @@ const updateContractStatus = async (req, res) => {
       WHERE id = $2
       RETURNING *
       `,
-      [status.toLowerCase(), id]
+      [normalizedStatus, id]
     );
 
     if (result.rows.length === 0) {
@@ -294,7 +297,6 @@ const updateContractStatus = async (req, res) => {
       message: "Contract status updated successfully.",
       contract: result.rows[0],
     });
-
   } catch (error) {
     console.error("UPDATE CONTRACT STATUS ERROR:", error);
 

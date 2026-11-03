@@ -1,4 +1,75 @@
+
 const pool = require("../config/db");
+
+// ============================================
+// CREATE PAYMENT NOTIFICATIONS
+// Called from paymentController after payment
+// is successfully inserted.
+// ============================================
+
+const createPaymentNotifications = async ({
+  queryable = pool,
+  clientId,
+  freelancerId,
+  paymentId,
+  projectTitle = "your project",
+}) => {
+  if (!clientId || !freelancerId || !paymentId) {
+    throw new Error(
+      "Client ID, Freelancer ID, and Payment ID are required."
+    );
+  }
+
+  if (Number(clientId) === Number(freelancerId)) {
+    throw new Error(
+      "Client and Freelancer must be different users."
+    );
+  }
+
+  const notifications = [
+    {
+      userId: clientId,
+      type: "payment_success",
+      title: "Payment Successful",
+      message: `Your demo payment for "${projectTitle}" has been completed successfully.`,
+    },
+    {
+      userId: freelancerId,
+      type: "payment_received",
+      title: "Payment Received",
+      message: `A demo payment for your project "${projectTitle}" has been successfully recorded.`,
+    },
+  ];
+
+  const createdNotifications = [];
+
+  for (const notification of notifications) {
+    const result = await queryable.query(
+      `
+      INSERT INTO notifications (
+        user_id,
+        type,
+        title,
+        message,
+        reference_id
+      )
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING *
+      `,
+      [
+        notification.userId,
+        notification.type,
+        notification.title,
+        notification.message,
+        paymentId,
+      ]
+    );
+
+    createdNotifications.push(result.rows[0]);
+  }
+
+  return createdNotifications;
+};
 
 // ============================================
 // CREATE NOTIFICATION
@@ -14,10 +85,6 @@ const createNotification = async (req, res) => {
       reference_id,
     } = req.body;
 
-    // ============================================
-    // VALIDATION
-    // ============================================
-
     if (!user_id || !type || !title || !message) {
       return res.status(400).json({
         success: false,
@@ -25,10 +92,6 @@ const createNotification = async (req, res) => {
           "User ID, type, title, and message are required.",
       });
     }
-
-    // ============================================
-    // CHECK USER
-    // ============================================
 
     const userResult = await pool.query(
       `
@@ -45,10 +108,6 @@ const createNotification = async (req, res) => {
         message: "User not found.",
       });
     }
-
-    // ============================================
-    // CREATE NOTIFICATION
-    // ============================================
 
     const result = await pool.query(
       `
@@ -77,15 +136,11 @@ const createNotification = async (req, res) => {
       notification: result.rows[0],
     });
   } catch (error) {
-    console.error(
-      "CREATE NOTIFICATION ERROR:",
-      error
-    );
+    console.error("CREATE NOTIFICATION ERROR:", error);
 
     return res.status(500).json({
       success: false,
       message: "Server Error",
-      error: error.message,
     });
   }
 };
@@ -120,15 +175,11 @@ const getUserNotifications = async (req, res) => {
       notifications: result.rows,
     });
   } catch (error) {
-    console.error(
-      "GET USER NOTIFICATIONS ERROR:",
-      error
-    );
+    console.error("GET USER NOTIFICATIONS ERROR:", error);
 
     return res.status(500).json({
       success: false,
       message: "Server Error",
-      error: error.message,
     });
   }
 };
@@ -171,7 +222,6 @@ const getUnreadNotificationCount = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Server Error",
-      error: error.message,
     });
   }
 };
@@ -215,7 +265,6 @@ const markNotificationAsRead = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Server Error",
-      error: error.message,
     });
   }
 };
@@ -258,7 +307,6 @@ const markAllNotificationsAsRead = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Server Error",
-      error: error.message,
     });
   }
 };
@@ -292,15 +340,11 @@ const deleteNotification = async (req, res) => {
       message: "Notification deleted successfully.",
     });
   } catch (error) {
-    console.error(
-      "DELETE NOTIFICATION ERROR:",
-      error
-    );
+    console.error("DELETE NOTIFICATION ERROR:", error);
 
     return res.status(500).json({
       success: false,
       message: "Server Error",
-      error: error.message,
     });
   }
 };
@@ -311,6 +355,7 @@ const deleteNotification = async (req, res) => {
 
 module.exports = {
   createNotification,
+  createPaymentNotifications,
   getUserNotifications,
   getUnreadNotificationCount,
   markNotificationAsRead,

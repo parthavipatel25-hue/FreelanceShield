@@ -1,3 +1,4 @@
+
 const pool = require("../config/db");
 
 // ============================================
@@ -22,10 +23,7 @@ const createProject = async (req, res) => {
     console.log("BODY:", req.body);
     console.log("=================================");
 
-    // ============================================
     // REQUIRED FIELDS
-    // ============================================
-
     if (
       !user_id ||
       !title ||
@@ -42,10 +40,7 @@ const createProject = async (req, res) => {
       });
     }
 
-    // ============================================
     // CHECK CLIENT PROFILE
-    // ============================================
-
     const clientResult = await pool.query(
       `
       SELECT
@@ -68,10 +63,7 @@ const createProject = async (req, res) => {
       });
     }
 
-    // ============================================
     // CHECK ROLE
-    // ============================================
-
     if (clientResult.rows[0].role !== "client") {
       return res.status(403).json({
         success: false,
@@ -79,10 +71,7 @@ const createProject = async (req, res) => {
       });
     }
 
-    // ============================================
     // CHECK CLIENT VERIFICATION
-    // ============================================
-
     const verificationResult = await pool.query(
       `
       SELECT status
@@ -103,24 +92,15 @@ const createProject = async (req, res) => {
       });
     }
 
-    // ============================================
     // CLIENT PROFILE ID
-    // ============================================
-
     const client_id = clientResult.rows[0].client_id;
 
-    // ============================================
     // SKILLS
-    // ============================================
-
     const projectSkills = Array.isArray(skills)
       ? skills.join(", ")
       : skills?.trim() || null;
 
-    // ============================================
     // INSERT PROJECT
-    // ============================================
-
     const result = await pool.query(
       `
       INSERT INTO projects (
@@ -133,16 +113,7 @@ const createProject = async (req, res) => {
         budget_type,
         deadline
       )
-      VALUES (
-        $1,
-        $2,
-        $3,
-        $4,
-        $5,
-        $6,
-        $7,
-        $8
-      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *
       `,
       [
@@ -255,10 +226,7 @@ const getAllProjects = async (req, res) => {
       `
     );
 
-    console.log(
-      "GET ALL PROJECTS:",
-      result.rows.length
-    );
+    console.log("GET ALL PROJECTS:", result.rows.length);
 
     return res.status(200).json({
       success: true,
@@ -645,16 +613,10 @@ const updateProjectProgress = async (req, res) => {
     try {
       await client.query("ROLLBACK");
     } catch (rollbackError) {
-      console.error(
-        "ROLLBACK ERROR:",
-        rollbackError
-      );
+      console.error("ROLLBACK ERROR:", rollbackError);
     }
 
-    console.error(
-      "UPDATE PROJECT PROGRESS ERROR:",
-      error
-    );
+    console.error("UPDATE PROJECT PROGRESS ERROR:", error);
 
     return res.status(500).json({
       success: false,
@@ -769,6 +731,7 @@ const completeProject = async (req, res) => {
       });
     }
 
+    // Mark the project as completed.
     const updatedProject = await client.query(
       `
       UPDATE projects
@@ -782,6 +745,8 @@ const completeProject = async (req, res) => {
       [id]
     );
 
+    // Mark the related active contract as completed.
+    // Completed contracts remain eligible for payment.
     const updatedContract = await client.query(
       `
       UPDATE contracts
@@ -795,6 +760,7 @@ const completeProject = async (req, res) => {
       [id]
     );
 
+    // Notify the client that the project is completed.
     await client.query(
       `
       INSERT INTO notifications (
@@ -822,23 +788,16 @@ const completeProject = async (req, res) => {
       message:
         "Project completed, related contract updated, and client notified.",
       project: updatedProject.rows[0],
-      contract:
-        updatedContract.rows[0] || null,
+      contract: updatedContract.rows[0] || null,
     });
   } catch (error) {
     try {
       await client.query("ROLLBACK");
     } catch (rollbackError) {
-      console.error(
-        "ROLLBACK ERROR:",
-        rollbackError
-      );
+      console.error("ROLLBACK ERROR:", rollbackError);
     }
 
-    console.error(
-      "COMPLETE PROJECT ERROR:",
-      error
-    );
+    console.error("COMPLETE PROJECT ERROR:", error);
 
     return res.status(500).json({
       success: false,
@@ -935,10 +894,7 @@ const searchProjects = async (req, res) => {
     const values = [];
     let parameterIndex = 1;
 
-    // ============================================
     // SEARCH TEXT
-    // ============================================
-
     if (search && search.trim() !== "") {
       query += `
         AND (
@@ -957,10 +913,7 @@ const searchProjects = async (req, res) => {
       parameterIndex++;
     }
 
-    // ============================================
     // CATEGORY
-    // ============================================
-
     if (category && category.trim() !== "") {
       query += `
         AND LOWER(COALESCE(p.category, ''))
@@ -971,10 +924,7 @@ const searchProjects = async (req, res) => {
       parameterIndex++;
     }
 
-    // ============================================
     // SKILLS
-    // ============================================
-
     if (skills && skills.trim() !== "") {
       query += `
         AND LOWER(COALESCE(p.skills, ''))
@@ -985,10 +935,7 @@ const searchProjects = async (req, res) => {
       parameterIndex++;
     }
 
-    // ============================================
     // BUDGET TYPE
-    // ============================================
-
     if (budget_type && budget_type.trim() !== "") {
       query += `
         AND LOWER(COALESCE(p.budget_type, ''))
@@ -999,10 +946,7 @@ const searchProjects = async (req, res) => {
       parameterIndex++;
     }
 
-    // ============================================
     // LOCATION
-    // ============================================
-
     if (location && location.trim() !== "") {
       query += `
         AND LOWER(COALESCE(cp.city, ''))
@@ -1013,10 +957,7 @@ const searchProjects = async (req, res) => {
       parameterIndex++;
     }
 
-    // ============================================
     // ORDER
-    // ============================================
-
     query += `
       ORDER BY p.id DESC
     `;
@@ -1027,10 +968,7 @@ const searchProjects = async (req, res) => {
     console.log("SQL VALUES:");
     console.log(values);
 
-    const result = await pool.query(
-      query,
-      values
-    );
+    const result = await pool.query(query, values);
 
     console.log(
       "SEARCH RESULT COUNT:",
@@ -1043,10 +981,7 @@ const searchProjects = async (req, res) => {
       projects: result.rows,
     });
   } catch (error) {
-    console.error(
-      "SEARCH PROJECTS ERROR:",
-      error
-    );
+    console.error("SEARCH PROJECTS ERROR:", error);
 
     return res.status(500).json({
       success: false,

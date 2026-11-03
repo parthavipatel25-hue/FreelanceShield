@@ -1096,6 +1096,81 @@ const login = async (req, res) => {
   }
 };
 
+
+const forceChangePassword = async (req, res) => {
+  try {
+    const { newPassword } = req.body;
+    const userId = req.user.id;
+
+    if (!newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "New password is required.",
+      });
+    }
+
+    if (typeof newPassword !== "string" || newPassword.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must contain at least 8 characters.",
+      });
+    }
+
+    if (Buffer.byteLength(newPassword, "utf8") > 72) {
+      return res.status(400).json({
+        success: false,
+        message: "Password is too long.",
+      });
+    }
+
+    const userResult = await pool.query(
+      `SELECT id, force_password_reset
+       FROM users
+       WHERE id = $1`,
+      [userId]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found.",
+      });
+    }
+
+    if (userResult.rows[0].force_password_reset !== true) {
+      return res.status(403).json({
+        success: false,
+        message: "Password change is not required.",
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    await pool.query(
+      `UPDATE users
+       SET password = $1,
+           force_password_reset = FALSE,
+           failed_login_attempts = 0,
+           last_failed_login_at = NULL
+       WHERE id = $2`,
+      [hashedPassword, userId]
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Password changed successfully. Please log in again.",
+    });
+  } catch (error) {
+    console.error("Force password change error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to change password. Please try again.",
+    });
+  }
+};
+
+
 // ======================================================
 // EXPORT
 // ======================================================
@@ -1103,4 +1178,5 @@ const login = async (req, res) => {
 module.exports = {
   register,
   login,
+  forceChangePassword,
 };

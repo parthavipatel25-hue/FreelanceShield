@@ -3,15 +3,30 @@ const crypto = require("crypto");
 const Razorpay = require("razorpay");
 const pool = require("../config/db");
 
+const {
+  createPaymentNotifications,
+} = require("./notificationController");
+
+// ============================================
+// RAZORPAY CONFIGURATION
+// ============================================
+
 const razorpay =
-  process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET
+  process.env.RAZORPAY_KEY_ID &&
+  process.env.RAZORPAY_KEY_SECRET
     ? new Razorpay({
         key_id: process.env.RAZORPAY_KEY_ID,
         key_secret: process.env.RAZORPAY_KEY_SECRET,
       })
     : null;
 
-// Create a Razorpay order for an active contract.
+// Contracts with either status are eligible for payment.
+const PAYMENT_ALLOWED_STATUSES = ["active", "completed"];
+
+// ============================================
+// CREATE RAZORPAY ORDER
+// ============================================
+
 const createPayment = async (req, res) => {
   const userId = req.user?.id;
   const contractId = Number(req.body.contractId);
@@ -47,27 +62,27 @@ const createPayment = async (req, res) => {
   const db = await pool.connect();
 
   try {
-    // Find the active contract belonging to this client.
-    // The project name is displayed to the user.
-    // IDs are kept internally for secure database linking.
+    // Find the contract belonging to the logged-in client.
     const contractResult = await db.query(
-      `SELECT
-         c.id AS contract_id,
-         c.project_id,
-         c.client_id,
-         c.freelancer_id,
-         c.amount,
-         c.status,
-         pr.title AS project_title,
-         cp.user_id AS client_user_id
-       FROM contracts c
-       JOIN client_profiles cp
-         ON cp.id = c.client_id
-       JOIN projects pr
-         ON pr.id = c.project_id
-       WHERE c.id = $1
-         AND cp.user_id = $2
-       LIMIT 1`,
+      `
+      SELECT
+        c.id AS contract_id,
+        c.project_id,
+        c.client_id,
+        c.freelancer_id,
+        c.amount,
+        c.status,
+        pr.title AS project_title,
+        cp.user_id AS client_user_id
+      FROM contracts c
+      JOIN client_profiles cp
+        ON cp.id = c.client_id
+      JOIN projects pr
+        ON pr.id = c.project_id
+      WHERE c.id = $1
+        AND cp.user_id = $2
+      LIMIT 1
+      `,
       [contractId, userId]
     );
 
@@ -80,10 +95,12 @@ const createPayment = async (req, res) => {
 
     const contract = contractResult.rows[0];
 
-    if (contract.status !== "active") {
+    // Allow payment for active and completed contracts.
+    if (!PAYMENT_ALLOWED_STATUSES.includes(contract.status)) {
       return res.status(400).json({
         success: false,
-        message: "Payments can only be initiated for active contracts.",
+        message:
+          "Payments are only available for active or completed contracts.",
       });
     }
 
@@ -96,13 +113,15 @@ const createPayment = async (req, res) => {
       });
     }
 
-    // Prevent paying the same full contract more than once.
+    // Prevent paying the same contract more than once.
     const existingPayment = await db.query(
-      `SELECT id
-       FROM payments
-       WHERE contract_id = $1
-         AND status = 'successful'
-       LIMIT 1`,
+      `
+      SELECT id
+      FROM payments
+      WHERE contract_id = $1
+        AND status = 'successful'
+      LIMIT 1
+      `,
       [contractId]
     );
 
@@ -135,26 +154,28 @@ const createPayment = async (req, res) => {
     });
 
     const insertResult = await db.query(
-      `INSERT INTO payments (
-         user_id,
-         project_id,
-         contract_id,
-         freelancer_id,
-         amount,
-         currency,
-         payment_method,
-         razorpay_order_id,
-         status
-       )
-       VALUES ($1, $2, $3, $4, $5, 'INR', 'razorpay', $6, 'pending')
-       RETURNING
-         id,
-         project_id,
-         contract_id,
-         amount,
-         currency,
-         razorpay_order_id,
-         status`,
+      `
+      INSERT INTO payments (
+        user_id,
+        project_id,
+        contract_id,
+        freelancer_id,
+        amount,
+        currency,
+        payment_method,
+        razorpay_order_id,
+        status
+      )
+      VALUES ($1, $2, $3, $4, $5, 'INR', 'razorpay', $6, 'pending')
+      RETURNING
+        id,
+        project_id,
+        contract_id,
+        amount,
+        currency,
+        razorpay_order_id,
+        status
+      `,
       [
         userId,
         contract.project_id,
@@ -180,7 +201,7 @@ const createPayment = async (req, res) => {
       keyId: process.env.RAZORPAY_KEY_ID,
     });
   } catch (error) {
-    console.error("Create payment error:", error);
+    console.error("CREATE PAYMENT ERROR:", error);
 
     return res.status(500).json({
       success: false,
@@ -191,7 +212,10 @@ const createPayment = async (req, res) => {
   }
 };
 
-// Verify the payment signature received after Razorpay Checkout.
+// ============================================
+// VERIFY RAZORPAY PAYMENT
+// ============================================
+
 const verifyPayment = async (req, res) => {
   const userId = req.user?.id;
 
@@ -237,23 +261,28 @@ const verifyPayment = async (req, res) => {
   }
 
   const db = await pool.connect();
+  let transactionStarted = false;
 
   try {
+    // Find the payment order.
     const result = await db.query(
-      `SELECT
-         p.id,
-         p.user_id,
-         p.project_id,
-         p.contract_id,
-         p.amount,
-         p.currency,
-         p.status,
-         pr.title AS project_title
-       FROM payments p
-       LEFT JOIN projects pr
-         ON pr.id = p.project_id
-       WHERE p.razorpay_order_id = $1
-       LIMIT 1`,
+      `
+      SELECT
+        p.id,
+        p.user_id,
+        p.project_id,
+        p.contract_id,
+        p.freelancer_id,
+        p.amount,
+        p.currency,
+        p.status,
+        pr.title AS project_title
+      FROM payments p
+      LEFT JOIN projects pr
+        ON pr.id = p.project_id
+      WHERE p.razorpay_order_id = $1
+      LIMIT 1
+      `,
       [orderId]
     );
 
@@ -266,7 +295,7 @@ const verifyPayment = async (req, res) => {
 
     const payment = result.rows[0];
 
-    // Only the client who created this payment can verify it.
+    // Only the client who created the payment can verify it.
     if (Number(payment.user_id) !== Number(userId)) {
       return res.status(403).json({
         success: false,
@@ -274,6 +303,7 @@ const verifyPayment = async (req, res) => {
       });
     }
 
+    // Do not create duplicate notifications.
     if (payment.status === "successful") {
       return res.json({
         success: true,
@@ -292,13 +322,12 @@ const verifyPayment = async (req, res) => {
       });
     }
 
-    // Verify the signature using the server-side secret.
+    // Verify the Razorpay signature.
     const expectedSignature = crypto
       .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
       .update(`${orderId}|${paymentId}`)
       .digest("hex");
 
-    // Reject malformed signature strings before timing-safe comparison.
     if (!/^[a-f0-9]{64}$/i.test(signature)) {
       return res.status(400).json({
         success: false,
@@ -319,7 +348,7 @@ const verifyPayment = async (req, res) => {
       });
     }
 
-    // Verify the payment with Razorpay's API.
+    // Verify the captured payment with Razorpay.
     const gatewayPayment = await razorpay.payments.fetch(paymentId);
 
     if (
@@ -336,32 +365,55 @@ const verifyPayment = async (req, res) => {
       });
     }
 
+    // Update payment and create notifications in one transaction.
+    await db.query("BEGIN");
+    transactionStarted = true;
+
     const updateResult = await db.query(
-      `UPDATE payments
-       SET transaction_id = $1,
-           status = 'successful',
-           updated_at = CURRENT_TIMESTAMP
-       WHERE id = $2
-         AND user_id = $3
-         AND status = 'pending'
-       RETURNING
-         id,
-         project_id,
-         contract_id,
-         amount,
-         currency,
-         transaction_id,
-         status`,
+      `
+      UPDATE payments
+      SET
+        transaction_id = $1,
+        status = 'successful',
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $2
+        AND user_id = $3
+        AND status = 'pending'
+      RETURNING
+        id,
+        project_id,
+        contract_id,
+        freelancer_id,
+        amount,
+        currency,
+        transaction_id,
+        status
+      `,
       [paymentId, payment.id, userId]
     );
 
     if (updateResult.rows.length === 0) {
+      await db.query("ROLLBACK");
+      transactionStarted = false;
+
       return res.status(409).json({
         success: false,
         message:
           "Payment status changed. Refresh your payment history.",
       });
     }
+
+    // Notify both client and freelancer.
+    await createPaymentNotifications({
+      queryable: db,
+      clientId: payment.user_id,
+      freelancerId: payment.freelancer_id,
+      paymentId: updateResult.rows[0].id,
+      projectTitle: payment.project_title,
+    });
+
+    await db.query("COMMIT");
+    transactionStarted = false;
 
     return res.json({
       success: true,
@@ -372,7 +424,11 @@ const verifyPayment = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Verify payment error:", error);
+    if (transactionStarted) {
+      await db.query("ROLLBACK").catch(() => {});
+    }
+
+    console.error("VERIFY PAYMENT ERROR:", error);
 
     return res.status(500).json({
       success: false,
@@ -383,7 +439,10 @@ const verifyPayment = async (req, res) => {
   }
 };
 
-// Return payment history for the logged-in client or freelancer.
+// ============================================
+// GET MY PAYMENTS
+// ============================================
+
 const getMyPayments = async (req, res) => {
   const userId = req.user?.id;
   const role = req.user?.role;
@@ -404,38 +463,41 @@ const getMyPayments = async (req, res) => {
 
   try {
     // The column name is selected from a fixed allowlist.
-    const column = role === "freelancer" ? "freelancer_id" : "user_id";
+    const column =
+      role === "freelancer" ? "freelancer_id" : "user_id";
 
     const result = await pool.query(
-      `SELECT
-         p.id,
-         p.project_id,
-         p.contract_id,
-         p.amount,
-         p.currency,
-         p.payment_method,
-         p.transaction_id,
-         p.razorpay_order_id,
-         p.status,
-         p.created_at,
-         pr.title AS project_title,
-         CASE
-           WHEN $2 = 'freelancer' THEN client_user.fullname
-           ELSE freelancer.fullname
-         END AS other_party_name
-       FROM payments p
-       LEFT JOIN projects pr
-         ON pr.id = p.project_id
-       LEFT JOIN contracts c
-         ON c.id = p.contract_id
-       LEFT JOIN client_profiles cp
-         ON cp.id = c.client_id
-       LEFT JOIN users client_user
-         ON client_user.id = cp.user_id
-       LEFT JOIN users freelancer
-         ON freelancer.id = c.freelancer_id
-       WHERE p.${column} = $1
-       ORDER BY p.created_at DESC`,
+      `
+      SELECT
+        p.id,
+        p.project_id,
+        p.contract_id,
+        p.amount,
+        p.currency,
+        p.payment_method,
+        p.transaction_id,
+        p.razorpay_order_id,
+        p.status,
+        p.created_at,
+        pr.title AS project_title,
+        CASE
+          WHEN $2 = 'freelancer' THEN client_user.fullname
+          ELSE freelancer.fullname
+        END AS other_party_name
+      FROM payments p
+      LEFT JOIN projects pr
+        ON pr.id = p.project_id
+      LEFT JOIN contracts c
+        ON c.id = p.contract_id
+      LEFT JOIN client_profiles cp
+        ON cp.id = c.client_id
+      LEFT JOIN users client_user
+        ON client_user.id = cp.user_id
+      LEFT JOIN users freelancer
+        ON freelancer.id = c.freelancer_id
+      WHERE p.${column} = $1
+      ORDER BY p.created_at DESC
+      `,
       [userId, role]
     );
 
@@ -460,6 +522,7 @@ const getMyPayments = async (req, res) => {
                 0
               )
             : 0,
+
         totalPaid:
           role === "client"
             ? successful.reduce(
@@ -467,15 +530,17 @@ const getMyPayments = async (req, res) => {
                 0
               )
             : 0,
+
         pendingAmount: pending.reduce(
           (total, payment) => total + Number(payment.amount),
           0
         ),
+
         totalTransactions: payments.length,
       },
     });
   } catch (error) {
-    console.error("Get payments error:", error);
+    console.error("GET PAYMENTS ERROR:", error);
 
     return res.status(500).json({
       success: false,
@@ -484,6 +549,9 @@ const getMyPayments = async (req, res) => {
   }
 };
 
+// ============================================
+// GET CLIENT CONTRACTS AVAILABLE FOR PAYMENT
+// ============================================
 
 const getMyContracts = async (req, res) => {
   const userId = req.user?.id;
@@ -498,32 +566,35 @@ const getMyContracts = async (req, res) => {
   if (req.user?.role !== "client") {
     return res.status(403).json({
       success: false,
-      message: "Only clients can view projects available for payment.",
+      message:
+        "Only clients can view projects available for payment.",
     });
   }
 
   try {
     const result = await pool.query(
-      `SELECT
-         c.id AS contract_id,
-         c.project_id,
-         pr.title AS project_title,
-         c.amount,
-         c.status
-       FROM contracts c
-       JOIN client_profiles cp
-         ON cp.id = c.client_id
-       JOIN projects pr
-         ON pr.id = c.project_id
-       WHERE cp.user_id = $1
-         AND c.status = 'active'
-         AND NOT EXISTS (
-           SELECT 1
-           FROM payments p
-           WHERE p.contract_id = c.id
-             AND p.status = 'successful'
-         )
-       ORDER BY pr.title ASC`,
+      `
+      SELECT
+        c.id AS contract_id,
+        c.project_id,
+        pr.title AS project_title,
+        c.amount,
+        c.status
+      FROM contracts c
+      JOIN client_profiles cp
+        ON cp.id = c.client_id
+      JOIN projects pr
+        ON pr.id = c.project_id
+      WHERE cp.user_id = $1
+        AND c.status IN ('active', 'completed')
+        AND NOT EXISTS (
+          SELECT 1
+          FROM payments p
+          WHERE p.contract_id = c.id
+            AND p.status = 'successful'
+        )
+      ORDER BY pr.title ASC
+      `,
       [userId]
     );
 
@@ -532,7 +603,7 @@ const getMyContracts = async (req, res) => {
       contracts: result.rows,
     });
   } catch (error) {
-    console.error("Get client contracts error:", error);
+    console.error("GET CLIENT CONTRACTS ERROR:", error);
 
     return res.status(500).json({
       success: false,
@@ -541,8 +612,11 @@ const getMyContracts = async (req, res) => {
   }
 };
 
-// Demo payment for college project use only.
+// ============================================
+// CREATE DEMO PAYMENT
 // No real money is charged.
+// ============================================
+
 const createDemoPayment = async (req, res) => {
   const userId = req.user?.id;
   const contractId = Number(req.body.contractId);
@@ -561,9 +635,7 @@ const createDemoPayment = async (req, res) => {
     });
   }
 
-  if (
-    process.env.DEMO_PAYMENTS_ENABLED !== "true"
-  ) {
+  if (process.env.DEMO_PAYMENTS_ENABLED !== "true") {
     return res.status(403).json({
       success: false,
       message: "Demo payments are disabled.",
@@ -586,20 +658,24 @@ const createDemoPayment = async (req, res) => {
 
     // Check that this contract belongs to the logged-in client.
     const result = await db.query(
-      `SELECT
-         c.id AS contract_id,
-         c.project_id,
-         c.freelancer_id,
-         c.amount,
-         c.status,
-         pr.title AS project_title,
-         cp.user_id AS client_user_id
-       FROM contracts c
-       JOIN client_profiles cp ON cp.id = c.client_id
-       JOIN projects pr ON pr.id = c.project_id
-       WHERE c.id = $1
-         AND cp.user_id = $2
-       FOR UPDATE OF c`,
+      `
+      SELECT
+        c.id AS contract_id,
+        c.project_id,
+        c.freelancer_id,
+        c.amount,
+        c.status,
+        pr.title AS project_title,
+        cp.user_id AS client_user_id
+      FROM contracts c
+      JOIN client_profiles cp
+        ON cp.id = c.client_id
+      JOIN projects pr
+        ON pr.id = c.project_id
+      WHERE c.id = $1
+        AND cp.user_id = $2
+      FOR UPDATE OF c
+      `,
       [contractId, userId]
     );
 
@@ -615,13 +691,15 @@ const createDemoPayment = async (req, res) => {
 
     const contract = result.rows[0];
 
-    if (contract.status !== "active") {
+    // Allow payment for active and completed contracts.
+    if (!PAYMENT_ALLOWED_STATUSES.includes(contract.status)) {
       await db.query("ROLLBACK");
       transactionStarted = false;
 
       return res.status(400).json({
         success: false,
-        message: "Only active contracts can be paid.",
+        message:
+          "Payments are only available for active or completed contracts.",
       });
     }
 
@@ -637,13 +715,15 @@ const createDemoPayment = async (req, res) => {
       });
     }
 
-    // Do not allow the same contract to be paid twice.
+    // Prevent duplicate successful payments.
     const existing = await db.query(
-      `SELECT id
-       FROM payments
-       WHERE contract_id = $1
-         AND status = 'successful'
-       LIMIT 1`,
+      `
+      SELECT id
+      FROM payments
+      WHERE contract_id = $1
+        AND status = 'successful'
+      LIMIT 1
+      `,
       [contractId]
     );
 
@@ -657,30 +737,32 @@ const createDemoPayment = async (req, res) => {
       });
     }
 
-    // Record a clearly labelled demo transaction.
+    // Insert a clearly labelled demo transaction.
     const paymentResult = await db.query(
-      `INSERT INTO payments (
-         user_id,
-         project_id,
-         contract_id,
-         freelancer_id,
-         amount,
-         currency,
-         payment_method,
-         status
-       )
-       VALUES ($1, $2, $3, $4, $5, 'INR', 'demo', 'successful')
-       RETURNING
-         id,
-         user_id,
-         project_id,
-         contract_id,
-         freelancer_id,
-         amount,
-         currency,
-         payment_method,
-         status,
-         created_at`,
+      `
+      INSERT INTO payments (
+        user_id,
+        project_id,
+        contract_id,
+        freelancer_id,
+        amount,
+        currency,
+        payment_method,
+        status
+      )
+      VALUES ($1, $2, $3, $4, $5, 'INR', 'demo', 'successful')
+      RETURNING
+        id,
+        user_id,
+        project_id,
+        contract_id,
+        freelancer_id,
+        amount,
+        currency,
+        payment_method,
+        status,
+        created_at
+      `,
       [
         userId,
         contract.project_id,
@@ -689,6 +771,15 @@ const createDemoPayment = async (req, res) => {
         amount,
       ]
     );
+
+    // Create notifications for both users.
+    await createPaymentNotifications({
+      queryable: db,
+      clientId: userId,
+      freelancerId: contract.freelancer_id,
+      paymentId: paymentResult.rows[0].id,
+      projectTitle: contract.project_title,
+    });
 
     await db.query("COMMIT");
     transactionStarted = false;
@@ -706,7 +797,7 @@ const createDemoPayment = async (req, res) => {
       await db.query("ROLLBACK").catch(() => {});
     }
 
-    console.error("Demo payment error:", error);
+    console.error("DEMO PAYMENT ERROR:", error);
 
     return res.status(500).json({
       success: false,
@@ -716,6 +807,10 @@ const createDemoPayment = async (req, res) => {
     db.release();
   }
 };
+
+// ============================================
+// EXPORT
+// ============================================
 
 module.exports = {
   createPayment,

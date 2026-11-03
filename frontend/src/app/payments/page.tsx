@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useRouter } from "next/navigation";
@@ -13,6 +14,12 @@ interface Contract {
   status: string;
 }
 
+interface Payment {
+  id: number;
+  contract_id: number;
+  status: string;
+}
+
 export default function PaymentsPage() {
   const router = useRouter();
 
@@ -21,6 +28,10 @@ export default function PaymentsPage() {
   const [message, setMessage] = useState("");
   const [loadingContracts, setLoadingContracts] = useState(true);
   const [paying, setPaying] = useState(false);
+
+  // ============================================
+  // LOAD UNPAID ACTIVE AND COMPLETED CONTRACTS
+  // ============================================
 
   useEffect(() => {
     async function loadContracts() {
@@ -42,58 +53,123 @@ export default function PaymentsPage() {
 
         const user = JSON.parse(userData);
         const userId = user.id;
+
         const token =
           user.token ||
           user.accessToken ||
           localStorage.getItem("token");
 
         if (!userId || !token) {
-          setMessage("Your login details are missing. Please log in again.");
+          setMessage(
+            "Your login details are missing. Please log in again."
+          );
           return;
         }
 
-        const response = await fetch(
+        const headers = {
+          Authorization: `Bearer ${token}`,
+        };
+
+        // Fetch all contracts belonging to the client.
+        const contractsResponse = await fetch(
           `http://localhost:5000/api/contracts/client/${userId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
+          { headers }
+        );
+
+        const contractsData = await contractsResponse.json();
+
+        if (!contractsResponse.ok) {
+          setMessage(
+            contractsData.message ||
+              "Unable to load your contracts."
+          );
+          return;
+        }
+
+        // Fetch payment history to identify already-paid contracts.
+        const paymentsResponse = await fetch(
+          "http://localhost:5000/api/payments/my-payments",
+          { headers }
+        );
+
+        const paymentsData = await paymentsResponse.json();
+
+        if (!paymentsResponse.ok) {
+          setMessage(
+            paymentsData.message ||
+              "Unable to check your payment history. Please try again."
+          );
+          return;
+        }
+
+        const receivedContracts: Contract[] = Array.isArray(
+          contractsData
+        )
+          ? contractsData
+          : Array.isArray(contractsData.contracts)
+            ? contractsData.contracts
+            : [];
+
+        const receivedPayments: Payment[] = Array.isArray(
+          paymentsData.payments
+        )
+          ? paymentsData.payments
+          : [];
+
+        // Find contracts that already have a successful payment.
+        const paidContractIds = new Set(
+          receivedPayments
+            .filter(
+              (payment) =>
+                payment.status?.toLowerCase() === "successful"
+            )
+            .map((payment) => String(payment.contract_id))
+        );
+
+        // Show only active or completed contracts that are unpaid.
+        const unpaidContracts = receivedContracts.filter(
+          (contract) => {
+            const status = contract.status?.trim().toLowerCase();
+            const id = contract.contract_id ?? contract.id;
+
+            const paymentEligible =
+              status === "active" ||
+              status === "completed";
+
+            const notPaid =
+              id != null &&
+              !paidContractIds.has(String(id));
+
+            return paymentEligible && notPaid;
           }
         );
 
-        const data = await response.json();
+        setContracts(unpaidContracts);
 
-        if (!response.ok) {
-          setMessage(data.message || "Unable to load your contracts.");
-          return;
-        }
-
-        const receivedContracts: Contract[] = Array.isArray(data)
-          ? data
-          : Array.isArray(data.contracts)
-            ? data.contracts
-            : [];
-
-        const activeContracts = receivedContracts.filter(
-          (contract) => contract.status === "active"
-        );
-
-        setContracts(activeContracts);
-
+        // Select a requested contract only if it is still eligible.
         if (requestedContractId) {
-          const matchingContract = activeContracts.find((contract) => {
-            const id = contract.contract_id ?? contract.id;
-            return id != null && String(id) === requestedContractId;
-          });
+          const matchingContract = unpaidContracts.find(
+            (contract) => {
+              const id =
+                contract.contract_id ?? contract.id;
+
+              return (
+                id != null &&
+                String(id) === requestedContractId
+              );
+            }
+          );
 
           if (matchingContract) {
             const id =
-              matchingContract.contract_id ?? matchingContract.id;
+              matchingContract.contract_id ??
+              matchingContract.id;
+
             setContractId(String(id));
           } else {
             setContractId("");
             setMessage(
-              "The selected contract was not found among your active contracts. Please refresh your contracts and try again."
+              "The selected contract is already paid or is not available for payment."
             );
           }
         } else {
@@ -101,8 +177,9 @@ export default function PaymentsPage() {
         }
       } catch (error) {
         console.error("Load contracts error:", error);
+
         setMessage(
-          "Could not load contracts. Check the backend connection and contract endpoint."
+          "Could not load contracts. Check the backend connection and payment API."
         );
       } finally {
         setLoadingContracts(false);
@@ -112,17 +189,29 @@ export default function PaymentsPage() {
     loadContracts();
   }, [router]);
 
+  // ============================================
+  // SELECTED CONTRACT
+  // ============================================
+
   const selectedContract = contracts.find((contract) => {
     const id = contract.contract_id ?? contract.id;
+
     return id != null && String(id) === contractId;
   });
 
   const formattedAmount = selectedContract
-    ? Number(selectedContract.amount).toLocaleString("en-IN", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      })
+    ? Number(selectedContract.amount).toLocaleString(
+        "en-IN",
+        {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }
+      )
     : "";
+
+  // ============================================
+  // MAKE DEMO PAYMENT
+  // ============================================
 
   async function handlePayment() {
     setMessage("");
@@ -150,13 +239,16 @@ export default function PaymentsPage() {
 
     try {
       const user = JSON.parse(userData);
+
       const token =
         user.token ||
         user.accessToken ||
         localStorage.getItem("token");
 
       if (!token) {
-        setMessage("Your login token was not found. Please log in again.");
+        setMessage(
+          "Your login token was not found. Please log in again."
+        );
         return;
       }
 
@@ -180,7 +272,8 @@ export default function PaymentsPage() {
 
       if (!response.ok) {
         setMessage(
-          data.message || "Demo payment failed. Please try again."
+          data.message ||
+            "Demo payment failed. Please try again."
         );
         return;
       }
@@ -190,10 +283,11 @@ export default function PaymentsPage() {
           `Demo payment successful for ${selectedContract.project_title}. No real money was charged.`
       );
 
-      // Remove the paid contract from the available payment options.
+      // Remove the successfully paid contract from payment options.
       setContracts((previousContracts) =>
         previousContracts.filter((contract) => {
           const id = contract.contract_id ?? contract.id;
+
           return String(id) !== String(selectedId);
         })
       );
@@ -201,6 +295,7 @@ export default function PaymentsPage() {
       setContractId("");
     } catch (error) {
       console.error("Demo payment error:", error);
+
       setMessage(
         "Could not connect to the backend. Check that it is running."
       );
@@ -208,6 +303,10 @@ export default function PaymentsPage() {
       setPaying(false);
     }
   }
+
+  // ============================================
+  // UI
+  // ============================================
 
   return (
     <main className="min-h-screen bg-white px-6 py-10 text-slate-800">
@@ -230,7 +329,9 @@ export default function PaymentsPage() {
         </p>
 
         <div className="mt-8 rounded-2xl border border-emerald-100 bg-white p-6 shadow-sm">
-          <h2 className="text-xl font-semibold">Make a payment</h2>
+          <h2 className="text-xl font-semibold">
+            Make a payment
+          </h2>
 
           <label
             htmlFor="contractId"
@@ -257,18 +358,20 @@ export default function PaymentsPage() {
               {loadingContracts
                 ? "Loading projects..."
                 : contracts.length === 0
-                  ? "No active projects available"
+                  ? "No unpaid active or completed projects available"
                   : "Choose a project"}
             </option>
 
             {contracts.map((contract) => {
-              const id = contract.contract_id ?? contract.id;
+              const id =
+                contract.contract_id ?? contract.id;
 
               if (id == null) return null;
 
               return (
                 <option key={id} value={String(id)}>
-                  {contract.project_title}
+                  {contract.project_title} (
+                  {contract.status})
                 </option>
               );
             })}
@@ -284,7 +387,11 @@ export default function PaymentsPage() {
           <input
             id="amount"
             type="text"
-            value={formattedAmount ? `₹${formattedAmount}` : ""}
+            value={
+              formattedAmount
+                ? `₹${formattedAmount}`
+                : ""
+            }
             readOnly
             placeholder="Select a project to view its amount"
             className="mt-2 w-full rounded-lg border border-slate-300 bg-slate-50 px-4 py-3 text-slate-700 outline-none"
@@ -313,7 +420,8 @@ export default function PaymentsPage() {
           )}
 
           <p className="mt-4 text-xs text-slate-500">
-            Payment Successful!
+            Demo payments are for academic demonstration only.
+            No real money is charged.
           </p>
         </div>
       </div>
