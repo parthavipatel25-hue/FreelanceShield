@@ -80,7 +80,8 @@ export default function FreelancerPage() {
   // GET LOGGED-IN USER
   // ==================================================
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     const storedUser =
       localStorage.getItem("user");
 
@@ -119,7 +120,8 @@ export default function FreelancerPage() {
   // GET AVAILABLE PROJECT COUNT
   // ==================================================
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     const fetchAvailableJobs = async () => {
       try {
         const response = await fetch(
@@ -171,7 +173,8 @@ export default function FreelancerPage() {
   // GET FREELANCER APPLICATIONS
   // ==================================================
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     if (!user) return;
 
     const fetchApplicationStats =

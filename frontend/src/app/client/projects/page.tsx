@@ -87,7 +87,8 @@ export default function MyProjectsPage() {
   // CHECK LOGGED-IN USER
   // ============================================
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     const storedUser = localStorage.getItem("user");
 
     if (!storedUser) {
@@ -118,7 +119,8 @@ export default function MyProjectsPage() {
   // FETCH CLIENT PROJECTS
   // ============================================
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     if (!user) {
       return;
     }

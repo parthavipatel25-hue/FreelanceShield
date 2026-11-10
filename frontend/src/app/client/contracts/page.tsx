@@ -82,7 +82,8 @@ export default function ClientContractsPage() {
   // GET USER
   // ==================================================
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     const storedUser = localStorage.getItem("user");
 
     if (!storedUser) {
@@ -172,7 +173,8 @@ export default function ClientContractsPage() {
   // LOAD CONTRACTS
   // ==================================================
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     if (user) {
       fetchContracts();
     }

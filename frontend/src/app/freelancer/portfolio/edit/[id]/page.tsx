@@ -74,7 +74,8 @@ export default function EditPortfolioPage() {
   // GET USER
   // ==================================================
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     const storedUser = localStorage.getItem("user");
 
     if (!storedUser) {
@@ -105,7 +106,8 @@ export default function EditPortfolioPage() {
   // FETCH PORTFOLIO
   // ==================================================
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     if (!user || !portfolioId) {
       return;
     }

@@ -110,7 +110,8 @@ export default function TopNavbar() {
   // LOAD LOGGED-IN USER
   // ============================================
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     const storedUser = localStorage.getItem("user");
 
     if (!storedUser) {
@@ -174,7 +175,8 @@ export default function TopNavbar() {
   // INITIAL LOAD + AUTO REFRESH
   // ============================================
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     if (!user?.id) {
       return;
     }

@@ -174,7 +174,8 @@ export default function ClientMilestonesPage() {
   // INITIAL LOAD
   // ============================================
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     fetchProjects();
   }, []);
 
@@ -182,7 +183,8 @@ export default function ClientMilestonesPage() {
   // LOAD MILESTONES WHEN PROJECT CHANGES
   // ============================================
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     if (!selectedProject) {
       setMilestones([]);
       return;

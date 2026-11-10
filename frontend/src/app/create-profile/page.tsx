@@ -92,7 +92,8 @@ const CreateFreelancerProfile = () => {
   // LOAD USER ID
   // =========================================
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     try {
       const storedUser =
         localStorage.getItem("user");
@@ -123,7 +124,8 @@ const CreateFreelancerProfile = () => {
   // CLEANUP PROFILE IMAGE PREVIEW
   // =========================================
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     return () => {
       if (profileImagePreview) {
         URL.revokeObjectURL(

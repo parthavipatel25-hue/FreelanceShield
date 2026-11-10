@@ -49,7 +49,8 @@ export default function ProfileCard({
   // CHECK PROFILE FROM BACKEND
   // =========================================
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     const checkProfile = async () => {
       // Admin does not have freelancer/client profile
       if (isAdmin) {

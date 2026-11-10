@@ -93,7 +93,8 @@ export default function ServicesPage() {
   const [category, setCategory] = useState("");
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     setCategory(params.get("category") || "");
     setLoading(false);

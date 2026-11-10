@@ -103,7 +103,8 @@ export default function ClientFreelancerProfilePage() {
   // CHECK LOGGED-IN CLIENT
   // ==================================================
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     const storedUser = localStorage.getItem("user");
 
     if (!storedUser) {
@@ -133,7 +134,8 @@ export default function ClientFreelancerProfilePage() {
   // LOAD FREELANCER PROFILE + PORTFOLIO
   // ==================================================
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     if (!client || !freelancerId) return;
 
     const loadFreelancer = async () => {

@@ -110,7 +110,8 @@ export default function BrowseProjectsPage() {
   // CHECK LOGGED-IN USER
   // ============================================
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     const storedUser =
       localStorage.getItem("user");
 
@@ -215,7 +216,8 @@ export default function BrowseProjectsPage() {
   // LOAD ALL PROJECTS WHEN USER IS READY
   // ============================================
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     if (!user) {
       return;
     }

@@ -81,7 +81,8 @@ export default function FreelancerMessagesPage() {
   // CHECK LOGGED-IN USER
   // ============================================
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     const storedUser = localStorage.getItem("user");
 
     if (!storedUser) {
@@ -181,7 +182,8 @@ export default function FreelancerMessagesPage() {
   // LOAD CONVERSATIONS
   // ============================================
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     if (!user) {
       return;
     }

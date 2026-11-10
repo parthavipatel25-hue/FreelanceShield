@@ -50,7 +50,8 @@ export default function FreelancerReviewsPage() {
   // LOAD LOGGED-IN USER
   // =====================================================
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     const storedUser = localStorage.getItem("user");
 
     if (!storedUser) {

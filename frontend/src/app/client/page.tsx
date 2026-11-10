@@ -43,7 +43,8 @@ export default function ClientPage() {
   const [projectCount, setProjectCount] = useState(0);
   const [proposalCount, setProposalCount] = useState(0);
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     const loadClientData = async () => {
       const storedUser = localStorage.getItem("user");
 

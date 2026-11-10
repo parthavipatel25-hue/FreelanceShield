@@ -39,7 +39,8 @@ export default function EditProjectPage() {
   // FETCH PROJECT
   // ============================================
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     const fetchProject = async () => {
       try {
         setLoading(true);

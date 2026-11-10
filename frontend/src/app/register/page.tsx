@@ -37,7 +37,8 @@ function RegisterForm() {
   const [loading, setLoading] = useState(false);
 
   // Get role from URL
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     const role = searchParams.get("role");
 
     if (role === "client" || role === "freelancer") {

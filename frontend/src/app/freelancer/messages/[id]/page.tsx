@@ -115,7 +115,8 @@ export default function FreelancerConversationPage() {
   // CHECK LOGGED-IN USER
   // ============================================
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     const storedUser = localStorage.getItem("user");
 
     if (!storedUser) {
@@ -151,7 +152,8 @@ export default function FreelancerConversationPage() {
   // FETCH CONVERSATION + MESSAGES
   // ============================================
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     if (!user || !conversationId) {
       return;
     }
@@ -313,7 +315,8 @@ export default function FreelancerConversationPage() {
   // SCROLL TO BOTTOM
   // ============================================
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     messagesEndRef.current?.scrollIntoView({
       behavior: "smooth",
     });

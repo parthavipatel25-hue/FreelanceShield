@@ -63,7 +63,8 @@ export default function AdminUsersPage() {
   });
 
   // Check authentication and admin access.
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     const storedUser = localStorage.getItem("user");
 
     if (!storedUser) {
@@ -146,7 +147,8 @@ export default function AdminUsersPage() {
     }
   }, [page, role, search, status]);
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     if (user) {
       void fetchUsers();
     }

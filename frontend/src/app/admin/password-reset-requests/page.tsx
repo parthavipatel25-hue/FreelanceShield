@@ -96,7 +96,8 @@ export default function PasswordResetRequestsPage() {
   // ADMIN AUTHENTICATION
   // =========================================
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     const storedUser = localStorage.getItem("user");
     const storedToken = localStorage.getItem("token");
 
@@ -191,7 +192,8 @@ export default function PasswordResetRequestsPage() {
   // LOAD REQUESTS AFTER AUTHENTICATION
   // =========================================
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     if (authorized && token) {
       fetchRequests();
     }

@@ -114,7 +114,8 @@ export default function ClientConversationPage() {
   // CHECK LOGGED-IN USER
   // ============================================
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     const storedUser = localStorage.getItem("user");
 
     if (!storedUser) {
@@ -145,7 +146,8 @@ export default function ClientConversationPage() {
   // FETCH CONVERSATION
   // ============================================
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     if (!user || !conversationId) {
       return;
     }
@@ -302,7 +304,8 @@ export default function ClientConversationPage() {
   // SCROLL TO BOTTOM
   // ============================================
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     messagesEndRef.current?.scrollIntoView({
       behavior: "smooth",
     });

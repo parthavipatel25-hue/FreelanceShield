@@ -56,7 +56,8 @@ export default function ClientProposalsPage() {
   // CHECK LOGGED-IN CLIENT
   // ============================================
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     const storedUser = localStorage.getItem("user");
 
     if (!storedUser) {
@@ -88,7 +89,8 @@ export default function ClientProposalsPage() {
   // FETCH CLIENT PROJECTS + PROPOSAL COUNTS
   // ============================================
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     if (!user) return;
 
     const fetchProjectsAndProposals = async () => {

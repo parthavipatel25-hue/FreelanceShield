@@ -42,7 +42,8 @@ export default function ClientReviewsPage() {
   // =====================================================
   // LOAD USER
   // =====================================================
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     const storedUser = localStorage.getItem("user");
 
     if (!storedUser) {

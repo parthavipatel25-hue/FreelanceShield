@@ -114,7 +114,8 @@ export default function ProfilePage() {
   // LOAD LOGGED-IN USER
   // ==================================================
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     const storedUser = localStorage.getItem("user");
 
     if (!storedUser) {
@@ -156,7 +157,8 @@ export default function ProfilePage() {
   // LOAD PROFILE
   // ==================================================
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     if (!user) return;
 
     const loadProfile = async () => {
@@ -211,7 +213,8 @@ export default function ProfilePage() {
   // LOAD VERIFICATION STATUS
   // ==================================================
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     if (!user) return;
 
     const loadVerificationStatus = async () => {

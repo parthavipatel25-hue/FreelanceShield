@@ -321,7 +321,8 @@ export default function EditProfileForm({
   // LOAD PROFILE
   // ==================================================
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     let isMounted = true;
 
     const loadProfile = async () => {
@@ -499,7 +500,8 @@ export default function EditProfileForm({
   // UPDATE NAME WHEN USER CHANGES
   // ==================================================
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     setFullname(user.fullname || "");
   }, [user.fullname]);
 

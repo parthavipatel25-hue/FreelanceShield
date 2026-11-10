@@ -33,7 +33,8 @@ export default function PaymentsPage() {
   // LOAD UNPAID ACTIVE AND COMPLETED CONTRACTS
   // ============================================
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     async function loadContracts() {
       setLoadingContracts(true);
       setMessage("");

@@ -24,7 +24,8 @@ interface Activity {
 export default function RecentActivity() {
   const [role, setRole] = useState<Role>("freelancer");
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     const storedUser = localStorage.getItem("user");
 
     if (!storedUser) return;

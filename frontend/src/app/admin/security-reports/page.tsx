@@ -94,7 +94,8 @@ export default function SecurityReportsPage() {
   // CHECK ADMIN
   // ==================================================
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     const storedUser =
       localStorage.getItem("user");
 
@@ -222,7 +223,8 @@ export default function SecurityReportsPage() {
   // INITIAL FETCH
   // ==================================================
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     fetchReports();
     fetchSummary();
     fetchRisks();

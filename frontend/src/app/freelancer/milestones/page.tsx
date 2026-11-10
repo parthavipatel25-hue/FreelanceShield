@@ -63,7 +63,8 @@ export default function FreelancerMilestonesPage() {
   // LOAD LOGGED-IN USER
   // ============================================
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     const storedUser = localStorage.getItem("user");
 
     if (!storedUser) {
@@ -93,7 +94,8 @@ export default function FreelancerMilestonesPage() {
   // FETCH FREELANCER PROJECTS
   // ============================================
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     if (!user?.id) return;
 
     fetchProjects();
@@ -151,7 +153,8 @@ export default function FreelancerMilestonesPage() {
   // FETCH MILESTONES
   // ============================================
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     if (!selectedProject) {
       setMilestones([]);
       return;

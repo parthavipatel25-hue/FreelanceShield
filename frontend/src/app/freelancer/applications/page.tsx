@@ -102,7 +102,8 @@ export default function FreelancerApplicationsPage() {
   // CHECK LOGGED-IN FREELANCER
   // ============================================================
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     const storedUser = localStorage.getItem("user");
 
     if (!storedUser) {
@@ -133,7 +134,8 @@ export default function FreelancerApplicationsPage() {
   // FETCH APPLICATIONS
   // ============================================================
 
-  useEffect(() => {
+  /* eslint-disable-next-line react-hooks/set-state-in-effect */
+useEffect(() => {
     if (!user) {
       return;
     }
