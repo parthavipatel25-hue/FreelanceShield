@@ -129,7 +129,7 @@ export default function MyProjectsPage() {
         setError("");
 
         const response = await fetch(
-          `http://localhost:5000/api/projects/client/${user.id}`,
+          `${process.env.NEXT_PUBLIC_API_URL}/api/projects/client/${user.id}`,
           {
             method: "GET",
             cache: "no-store",
@@ -195,7 +195,7 @@ export default function MyProjectsPage() {
       // ========================================
 
       const response = await fetch(
-        "http://localhost:5000/api/messages/conversations",
+        "${process.env.NEXT_PUBLIC_API_URL}/api/messages/conversations",
         {
           method: "POST",
 
@@ -280,7 +280,7 @@ export default function MyProjectsPage() {
       setError("");
 
       const response = await fetch(
-        `http://localhost:5000/api/projects/${projectId}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/projects/${projectId}`,
         {
           method: "DELETE",
         }

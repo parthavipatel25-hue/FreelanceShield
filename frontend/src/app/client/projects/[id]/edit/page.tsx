@@ -46,7 +46,7 @@ export default function EditProjectPage() {
         setError("");
 
         const response = await fetch(
-          `http://localhost:5000/api/projects/${projectId}`
+          `${process.env.NEXT_PUBLIC_API_URL}/api/projects/${projectId}`
         );
 
         const data = await response.json();
@@ -107,7 +107,7 @@ export default function EditProjectPage() {
       setError("");
 
       const response = await fetch(
-        `http://localhost:5000/api/projects/${projectId}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/projects/${projectId}`,
         {
           method: "PUT",
           headers: {

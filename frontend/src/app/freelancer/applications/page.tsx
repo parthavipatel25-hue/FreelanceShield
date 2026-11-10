@@ -144,7 +144,7 @@ export default function FreelancerApplicationsPage() {
         setError("");
 
         const response = await fetch(
-          `http://localhost:5000/api/proposals/freelancer/${user.id}`,
+          `${process.env.NEXT_PUBLIC_API_URL}/api/proposals/freelancer/${user.id}`,
           {
             method: "GET",
             cache: "no-store",
@@ -241,7 +241,7 @@ export default function FreelancerApplicationsPage() {
       // ========================================================
 
       const response = await fetch(
-        "http://localhost:5000/api/messages/conversations",
+        "${process.env.NEXT_PUBLIC_API_URL}/api/messages/conversations",
         {
           method: "POST",
 

@@ -139,7 +139,7 @@ export default function TopNavbar() {
       setLoadingNotifications(true);
 
       const response = await fetch(
-        `http://localhost:5000/api/notifications/user/${user.id}`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/notifications/user/${user.id}`
       );
 
       const data = await response.json();
@@ -242,7 +242,7 @@ export default function TopNavbar() {
         params.append("search", trimmedSearch);
 
         const response = await fetch(
-          `http://localhost:5000/api/projects/search?${params.toString()}`
+          `${process.env.NEXT_PUBLIC_API_URL}/api/projects/search?${params.toString()}`
         );
 
         const data = await response.json();
@@ -273,7 +273,7 @@ export default function TopNavbar() {
         params.append("search", trimmedSearch);
 
         const response = await fetch(
-          `http://localhost:5000/api/freelancer-profile/search?${params.toString()}`
+          `${process.env.NEXT_PUBLIC_API_URL}/api/freelancer-profile/search?${params.toString()}`
         );
 
         const data = await response.json();
@@ -397,7 +397,7 @@ export default function TopNavbar() {
     try {
       if (!notification.is_read) {
         const response = await fetch(
-          `http://localhost:5000/api/notifications/${notification.id}/read`,
+          `${process.env.NEXT_PUBLIC_API_URL}/api/notifications/${notification.id}/read`,
           {
             method: "PUT",
           }
@@ -442,7 +442,7 @@ export default function TopNavbar() {
 
     try {
       const response = await fetch(
-        `http://localhost:5000/api/notifications/user/${user.id}/read-all`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/notifications/user/${user.id}/read-all`,
         {
           method: "PUT",
         }
@@ -919,7 +919,7 @@ export default function TopNavbar() {
                                 >
                                   {freelancer.profile_picture ? (
                                     <img
-                                      src={`http://localhost:5000${freelancer.profile_picture}`}
+                                      src={`${process.env.NEXT_PUBLIC_API_URL}${freelancer.profile_picture}`}
                                       alt={
                                         freelancer.fullname
                                       }

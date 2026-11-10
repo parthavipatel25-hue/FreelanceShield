@@ -112,7 +112,7 @@ export default function ClientProjectDetailsPage() {
         // ============================================
 
         const projectResponse = await fetch(
-          `http://localhost:5000/api/projects/${projectId}`
+          `${process.env.NEXT_PUBLIC_API_URL}/api/projects/${projectId}`
         );
 
         const projectData = await projectResponse.json();
@@ -144,7 +144,7 @@ export default function ClientProjectDetailsPage() {
 
         try {
           const proposalResponse = await fetch(
-            `http://localhost:5000/api/proposals/project/${projectId}`
+            `${process.env.NEXT_PUBLIC_API_URL}/api/proposals/project/${projectId}`
           );
 
           const proposalData = await proposalResponse.json();

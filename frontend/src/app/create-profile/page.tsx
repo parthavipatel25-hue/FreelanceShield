@@ -506,7 +506,7 @@ const CreateFreelancerProfile = () => {
 
       const response =
         await fetch(
-          "http://localhost:5000/api/freelancer-profile",
+          "${process.env.NEXT_PUBLIC_API_URL}/api/freelancer-profile",
           {
             method: "POST",
 

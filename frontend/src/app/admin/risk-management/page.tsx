@@ -184,7 +184,7 @@ export default function RiskManagementPage() {
       setError("");
 
       const response = await fetch(
-        "http://localhost:5000/api/risks"
+        "${process.env.NEXT_PUBLIC_API_URL}/api/risks"
       );
 
       const data = await response.json();
@@ -216,7 +216,7 @@ export default function RiskManagementPage() {
   const fetchSummary = async () => {
     try {
       const response = await fetch(
-        "http://localhost:5000/api/risks/summary"
+        "${process.env.NEXT_PUBLIC_API_URL}/api/risks/summary"
       );
 
       const data = await response.json();
@@ -279,7 +279,7 @@ export default function RiskManagementPage() {
       setSuccess("");
 
       const response = await fetch(
-        `http://localhost:5000/api/risks/${riskId}/status`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/risks/${riskId}/status`,
         {
           method: "PUT",
           headers: {
@@ -515,7 +515,7 @@ export default function RiskManagementPage() {
       setSuccess("");
 
       const response = await fetch(
-        `http://localhost:5000/api/risks/${riskId}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/risks/${riskId}`,
         {
           method: "DELETE",
         }

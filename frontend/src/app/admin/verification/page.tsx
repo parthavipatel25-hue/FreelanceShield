@@ -124,7 +124,7 @@ export default function VerificationPage() {
       setError("");
 
       const response = await fetch(
-        `http://localhost:5000/api/user-verification/admin/pending?admin_id=${adminId}`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/user-verification/admin/pending?admin_id=${adminId}`
       );
 
       const data = await response.json();
@@ -167,7 +167,7 @@ export default function VerificationPage() {
       setProcessingId(id);
 
       const response = await fetch(
-        `http://localhost:5000/api/user-verification/admin/${id}/approve`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/user-verification/admin/${id}/approve`,
         {
           method: "PUT",
           headers: {
@@ -227,7 +227,7 @@ export default function VerificationPage() {
       setProcessingId(id);
 
       const response = await fetch(
-        `http://localhost:5000/api/user-verification/admin/${id}/reject`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/user-verification/admin/${id}/reject`,
         {
           method: "PUT",
           headers: {

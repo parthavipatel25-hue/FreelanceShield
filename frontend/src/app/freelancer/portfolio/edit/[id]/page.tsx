@@ -116,7 +116,7 @@ export default function EditPortfolioPage() {
         setErrorMessage("");
 
         const response = await fetch(
-          `http://localhost:5000/api/portfolio/freelancer/${user.id}`
+          `${process.env.NEXT_PUBLIC_API_URL}/api/portfolio/freelancer/${user.id}`
         );
 
         const data = await response.json();
@@ -324,7 +324,7 @@ export default function EditPortfolioPage() {
       }
 
       const response = await fetch(
-        `http://localhost:5000/api/portfolio/${portfolioId}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/portfolio/${portfolioId}`,
         {
           method: "PUT",
           body: formData,

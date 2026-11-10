@@ -70,7 +70,7 @@ export default function AdminReportsPage() {
       });
 
       const response = await fetch(
-        `http://localhost:5000/api/admin/reports?${params.toString()}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/admin/reports?${params.toString()}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -122,7 +122,7 @@ export default function AdminReportsPage() {
 
     try {
       const response = await fetch(
-        `http://localhost:5000/api/admin/reports/${reportId}/status`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/admin/reports/${reportId}/status`,
         {
           method: "PATCH",
           headers: {

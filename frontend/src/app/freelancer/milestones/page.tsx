@@ -107,7 +107,7 @@ export default function FreelancerMilestonesPage() {
       setError("");
 
       const response = await fetch(
-        `http://localhost:5000/api/projects`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/projects`
       );
 
       const data = await response.json();
@@ -166,7 +166,7 @@ export default function FreelancerMilestonesPage() {
       setError("");
 
       const response = await fetch(
-        `http://localhost:5000/api/milestones/project/${projectId}`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/milestones/project/${projectId}`
       );
 
       const data = await response.json();
@@ -208,7 +208,7 @@ export default function FreelancerMilestonesPage() {
       setError("");
 
       const response = await fetch(
-        `http://localhost:5000/api/milestones/${milestoneId}/progress`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/milestones/${milestoneId}/progress`,
         {
           method: "PUT",
           headers: {

@@ -117,7 +117,7 @@ export default function InvoicesPage() {
       }
 
       const response = await fetch(
-        "http://localhost:5000/api/payments/my-payments",
+        "${process.env.NEXT_PUBLIC_API_URL}/api/payments/my-payments",
         {
           headers: {
             Authorization: `Bearer ${token}`,

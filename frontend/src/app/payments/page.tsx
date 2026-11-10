@@ -72,7 +72,7 @@ export default function PaymentsPage() {
 
         // Fetch all contracts belonging to the client.
         const contractsResponse = await fetch(
-          `http://localhost:5000/api/contracts/client/${userId}`,
+          `${process.env.NEXT_PUBLIC_API_URL}/api/contracts/client/${userId}`,
           { headers }
         );
 
@@ -88,7 +88,7 @@ export default function PaymentsPage() {
 
         // Fetch payment history to identify already-paid contracts.
         const paymentsResponse = await fetch(
-          "http://localhost:5000/api/payments/my-payments",
+          "${process.env.NEXT_PUBLIC_API_URL}/api/payments/my-payments",
           { headers }
         );
 
@@ -255,7 +255,7 @@ export default function PaymentsPage() {
       setPaying(true);
 
       const response = await fetch(
-        "http://localhost:5000/api/payments/demo",
+        "${process.env.NEXT_PUBLIC_API_URL}/api/payments/demo",
         {
           method: "POST",
           headers: {

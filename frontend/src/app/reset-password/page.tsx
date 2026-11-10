@@ -85,7 +85,7 @@ export default function ResetPasswordPage() {
         }
 
         response = await fetch(
-          "http://localhost:5000/api/auth/force-change-password",
+          "${process.env.NEXT_PUBLIC_API_URL}/api/auth/force-change-password",
           {
             method: "PUT",
             headers: {
@@ -97,7 +97,7 @@ export default function ResetPasswordPage() {
         );
       } else if (mode === "normal") {
         response = await fetch(
-          "http://localhost:5000/api/password-reset/reset-password",
+          "${process.env.NEXT_PUBLIC_API_URL}/api/password-reset/reset-password",
           {
             method: "POST",
             headers: {

@@ -101,7 +101,7 @@ export default function ClientProposalsPage() {
         // ========================================
 
         const projectsResponse = await fetch(
-          `http://localhost:5000/api/projects/client/${user.id}`
+          `${process.env.NEXT_PUBLIC_API_URL}/api/projects/client/${user.id}`
         );
 
         const projectsData =
@@ -131,7 +131,7 @@ export default function ClientProposalsPage() {
                 try {
                   const proposalResponse =
                     await fetch(
-                      `http://localhost:5000/api/proposals/project/${project.id}`
+                      `${process.env.NEXT_PUBLIC_API_URL}/api/proposals/project/${project.id}`
                     );
 
                   const proposalData =

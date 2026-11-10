@@ -203,7 +203,7 @@ export default function ClientProfileForm() {
       setLoading(true);
 
       const response = await fetch(
-        "http://localhost:5000/api/client-profile",
+        "${process.env.NEXT_PUBLIC_API_URL}/api/client-profile",
         {
           method: "POST",
 

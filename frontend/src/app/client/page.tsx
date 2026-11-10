@@ -67,7 +67,7 @@ export default function ClientPage() {
         // ============================================
 
         const projectsResponse = await fetch(
-          `http://localhost:5000/api/projects/client/${loggedInUser.id}`
+          `${process.env.NEXT_PUBLIC_API_URL}/api/projects/client/${loggedInUser.id}`
         );
 
         const projectsData = await projectsResponse.json();
@@ -96,7 +96,7 @@ export default function ClientPage() {
           clientProjects.map(async (project) => {
             try {
               const response = await fetch(
-                `http://localhost:5000/api/proposals/project/${project.id}`
+                `${process.env.NEXT_PUBLIC_API_URL}/api/proposals/project/${project.id}`
               );
 
               const data = await response.json();

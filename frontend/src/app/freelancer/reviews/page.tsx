@@ -80,7 +80,7 @@ export default function FreelancerReviewsPage() {
   const fetchReviews = async (freelancerId: number) => {
     try {
       const response = await fetch(
-        `http://localhost:5000/api/reviews/freelancer/${freelancerId}`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/reviews/freelancer/${freelancerId}`
       );
 
       const data = await response.json();
@@ -107,7 +107,7 @@ export default function FreelancerReviewsPage() {
   const fetchRating = async (freelancerId: number) => {
     try {
       const response = await fetch(
-        `http://localhost:5000/api/reviews/freelancer/${freelancerId}/rating`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/reviews/freelancer/${freelancerId}/rating`
       );
 
       const data = await response.json();

@@ -124,7 +124,7 @@ export default function ClientContractsPage() {
       setError("");
 
       const response = await fetch(
-        `http://localhost:5000/api/contracts/client/${user.id}`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/contracts/client/${user.id}`
       );
 
       const data = await response.json();

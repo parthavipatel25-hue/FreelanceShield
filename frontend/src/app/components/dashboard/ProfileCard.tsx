@@ -81,7 +81,7 @@ export default function ProfileCard({
 
         if (isFreelancer) {
           const response = await fetch(
-            `http://localhost:5000/api/freelancer-profile/${userId}`
+            `${process.env.NEXT_PUBLIC_API_URL}/api/freelancer-profile/${userId}`
           );
 
           if (response.ok) {
@@ -103,7 +103,7 @@ export default function ProfileCard({
 
         if (isClient) {
           const response = await fetch(
-            `http://localhost:5000/api/client-profile/${userId}`
+            `${process.env.NEXT_PUBLIC_API_URL}/api/client-profile/${userId}`
           );
 
           if (response.ok) {

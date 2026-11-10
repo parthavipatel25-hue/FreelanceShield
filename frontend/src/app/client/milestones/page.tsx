@@ -97,7 +97,7 @@ export default function ClientMilestonesPage() {
       setLoadingProjects(true);
 
       const response = await fetch(
-        `http://localhost:5000/api/projects/client/${user.id}`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/projects/client/${user.id}`
       );
 
       const data = await response.json();
@@ -146,7 +146,7 @@ export default function ClientMilestonesPage() {
       setLoadingMilestones(true);
 
       const response = await fetch(
-        `http://localhost:5000/api/milestones/project/${projectId}`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/milestones/project/${projectId}`
       );
 
       const data = await response.json();
@@ -316,7 +316,7 @@ export default function ClientMilestonesPage() {
       setSaving(true);
 
       let url =
-        "http://localhost:5000/api/milestones";
+        "${process.env.NEXT_PUBLIC_API_URL}/api/milestones";
 
       let method = "POST";
 
@@ -333,7 +333,7 @@ export default function ClientMilestonesPage() {
 
       // UPDATE
       if (editingMilestone) {
-        url = `http://localhost:5000/api/milestones/${editingMilestone.id}`;
+        url = `${process.env.NEXT_PUBLIC_API_URL}/api/milestones/${editingMilestone.id}`;
         method = "PUT";
 
         body = {
@@ -414,7 +414,7 @@ export default function ClientMilestonesPage() {
 
     try {
       const response = await fetch(
-        `http://localhost:5000/api/milestones/${milestoneId}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/milestones/${milestoneId}`,
         {
           method: "DELETE",
         }

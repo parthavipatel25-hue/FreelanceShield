@@ -167,7 +167,7 @@ export default function FreelancerConversationPage() {
 
        const conversationResponse =
   await fetch(
-    `http://localhost:5000/api/messages/conversations/${conversationId}?user_id=${user.id}`,
+    `${process.env.NEXT_PUBLIC_API_URL}/api/messages/conversations/${conversationId}?user_id=${user.id}`,
             {
               method: "GET",
               headers: {
@@ -222,7 +222,7 @@ export default function FreelancerConversationPage() {
 
         const messagesResponse =
   await fetch(
-    `http://localhost:5000/api/messages/conversations/${conversationId}/messages?user_id=${user.id}`,
+    `${process.env.NEXT_PUBLIC_API_URL}/api/messages/conversations/${conversationId}/messages?user_id=${user.id}`,
             {
               method: "GET",
               headers: {
@@ -274,7 +274,7 @@ export default function FreelancerConversationPage() {
         for (const message of unreadMessages) {
           try {
             await fetch(
-              `http://localhost:5000/api/messages/messages/${message.id}/read`,
+              `${process.env.NEXT_PUBLIC_API_URL}/api/messages/messages/${message.id}/read`,
               {
                 method: "PUT",
                 headers: {
@@ -347,7 +347,7 @@ export default function FreelancerConversationPage() {
         Number(conversation.client_id);
 
       const response = await fetch(
-        "http://localhost:5000/api/messages/messages",
+        "${process.env.NEXT_PUBLIC_API_URL}/api/messages/messages",
         {
           method: "POST",
           headers: {

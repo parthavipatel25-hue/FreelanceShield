@@ -157,7 +157,7 @@ export default function BrowseProjectsPage() {
 
         const response =
           await fetch(
-            "http://localhost:5000/api/projects",
+            "${process.env.NEXT_PUBLIC_API_URL}/api/projects",
             {
               method: "GET",
               headers: {
@@ -303,7 +303,7 @@ export default function BrowseProjectsPage() {
         // ============================================
 
         const url =
-          `http://localhost:5000/api/projects/search?${params.toString()}`;
+          `${process.env.NEXT_PUBLIC_API_URL}/api/projects/search?${params.toString()}`;
 
         console.log(
           "SEARCH URL:",

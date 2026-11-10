@@ -123,7 +123,7 @@ export default function FreelancerPage() {
     const fetchAvailableJobs = async () => {
       try {
         const response = await fetch(
-          "http://localhost:5000/api/projects"
+          "${process.env.NEXT_PUBLIC_API_URL}/api/projects"
         );
 
         const data =
@@ -178,7 +178,7 @@ export default function FreelancerPage() {
       async () => {
         try {
           const response = await fetch(
-            `http://localhost:5000/api/proposals/freelancer/${user.id}`
+            `${process.env.NEXT_PUBLIC_API_URL}/api/proposals/freelancer/${user.id}`
           );
 
           const data =
@@ -232,7 +232,7 @@ export default function FreelancerPage() {
                   try {
                     const projectResponse =
                       await fetch(
-                        `http://localhost:5000/api/projects/${proposal.project_id}`
+                        `${process.env.NEXT_PUBLIC_API_URL}/api/projects/${proposal.project_id}`
                       );
 
                     const projectData =

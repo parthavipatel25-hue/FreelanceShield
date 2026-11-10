@@ -65,7 +65,7 @@ export default function ClientReviewsPage() {
       setLoading(true);
 
       const response = await fetch(
-        `http://localhost:5000/api/projects/client/${userId}`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/projects/client/${userId}`
       );
 
       const data = await response.json();
@@ -119,7 +119,7 @@ export default function ClientReviewsPage() {
       setSubmitting(true);
 
       const response = await fetch(
-        "http://localhost:5000/api/reviews",
+        "${process.env.NEXT_PUBLIC_API_URL}/api/reviews",
         {
           method: "POST",
           headers: {

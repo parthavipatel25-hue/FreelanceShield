@@ -111,7 +111,7 @@ export default function AdminUsersPage() {
       if (status) params.set("status", status);
 
       const response = await fetch(
-        `http://localhost:5000/api/admin/users?${params.toString()}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/admin/users?${params.toString()}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -201,7 +201,7 @@ export default function AdminUsersPage() {
       setNotice("");
 
       const response = await fetch(
-        `http://localhost:5000/api/admin/users/${targetUser.id}/status`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/admin/users/${targetUser.id}/status`,
         {
           method: "PUT",
           headers: {

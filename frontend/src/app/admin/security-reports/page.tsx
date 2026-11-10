@@ -130,7 +130,7 @@ export default function SecurityReportsPage() {
       setError("");
 
       const response = await fetch(
-        "http://localhost:5000/api/security-reports"
+        "${process.env.NEXT_PUBLIC_API_URL}/api/security-reports"
       );
 
       const data = await response.json();
@@ -166,7 +166,7 @@ export default function SecurityReportsPage() {
   const fetchSummary = async () => {
     try {
       const response = await fetch(
-        "http://localhost:5000/api/security-reports/summary"
+        "${process.env.NEXT_PUBLIC_API_URL}/api/security-reports/summary"
       );
 
       const data = await response.json();
@@ -194,7 +194,7 @@ export default function SecurityReportsPage() {
   const fetchRisks = async () => {
     try {
       const response = await fetch(
-        "http://localhost:5000/api/risks"
+        "${process.env.NEXT_PUBLIC_API_URL}/api/risks"
       );
 
       const data = await response.json();

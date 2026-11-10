@@ -130,7 +130,7 @@ export default function FreelancerContractsPage() {
       setError("");
 
       const response = await fetch(
-        `http://localhost:5000/api/contracts/freelancer/${user.id}`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/contracts/freelancer/${user.id}`
       );
 
       const data = await response.json();
@@ -341,7 +341,7 @@ export default function FreelancerContractsPage() {
       setError("");
 
       const response = await fetch(
-        `http://localhost:5000/api/projects/${contract.project_id}/progress`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/projects/${contract.project_id}/progress`,
         {
           method: "PUT",
           headers: {
@@ -398,7 +398,7 @@ export default function FreelancerContractsPage() {
       setError("");
 
       const response = await fetch(
-        `http://localhost:5000/api/projects/${contract.project_id}/complete`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/projects/${contract.project_id}/complete`,
         {
           method: "PUT",
           headers: {

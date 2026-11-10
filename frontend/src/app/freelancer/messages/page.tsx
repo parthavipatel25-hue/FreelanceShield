@@ -130,7 +130,7 @@ export default function FreelancerMessagesPage() {
       setError("");
 
       const response = await fetch(
-        `http://localhost:5000/api/messages/conversations/user/${user.id}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/messages/conversations/user/${user.id}`,
         {
           method: "GET",
           headers: {

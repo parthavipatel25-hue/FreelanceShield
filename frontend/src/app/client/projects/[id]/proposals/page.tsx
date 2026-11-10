@@ -94,7 +94,7 @@ export default function ClientProjectProposalsPage() {
         setError("");
 
         const response = await fetch(
-          `http://localhost:5000/api/proposals/project/${projectId}`
+          `${process.env.NEXT_PUBLIC_API_URL}/api/proposals/project/${projectId}`
         );
 
         const data = await response.json();
@@ -141,7 +141,7 @@ export default function ClientProjectProposalsPage() {
       setActionMessage("");
 
       const response = await fetch(
-        `http://localhost:5000/api/proposals/${proposalId}/accept`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/proposals/${proposalId}/accept`,
         {
           method: "PUT",
           headers: {
@@ -164,7 +164,7 @@ export default function ClientProjectProposalsPage() {
 
       // Refresh proposals so accepted/rejected statuses are current
       const refreshResponse = await fetch(
-        `http://localhost:5000/api/proposals/project/${projectId}`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/proposals/project/${projectId}`
       );
 
       const refreshData = await refreshResponse.json();
@@ -204,7 +204,7 @@ export default function ClientProjectProposalsPage() {
       setActionMessage("");
 
       const response = await fetch(
-        `http://localhost:5000/api/proposals/${proposalId}/reject`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/proposals/${proposalId}/reject`,
         {
           method: "PUT",
           headers: {

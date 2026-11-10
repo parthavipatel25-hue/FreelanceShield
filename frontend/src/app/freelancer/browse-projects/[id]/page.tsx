@@ -105,7 +105,7 @@ export default function ProjectDetailsPage() {
         setError("");
 
         const response = await fetch(
-          `http://localhost:5000/api/projects/${projectId}`
+          `${process.env.NEXT_PUBLIC_API_URL}/api/projects/${projectId}`
         );
 
         const data = await response.json();
@@ -197,7 +197,7 @@ export default function ProjectDetailsPage() {
         throw new Error("Please log in again to submit a report.");
       }
 
-      const response = await fetch("http://localhost:5000/api/reports", {
+      const response = await fetch("${process.env.NEXT_PUBLIC_API_URL}/api/reports", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -268,7 +268,7 @@ export default function ProjectDetailsPage() {
       setProposalError("");
       setProposalMessage("");
 
-      const response = await fetch("http://localhost:5000/api/proposals", {
+      const response = await fetch("${process.env.NEXT_PUBLIC_API_URL}/api/proposals", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
