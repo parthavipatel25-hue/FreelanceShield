@@ -125,7 +125,7 @@ export default function AdminActivityLogsPage() {
       }
 
       const response = await fetch(
-        `http://localhost:5000/api/admin-monitoring/activity-logs?${params.toString()}`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/admin-monitoring/activity-logs?${params.toString()}`
       );
 
       const data = await response.json();

@@ -48,7 +48,7 @@ interface ResetRequest {
 
 type FilterStatus = "all" | RequestStatus;
 
-const API_URL = "http://localhost:5000/api/password-reset";
+const API_URL = `${process.env.NEXT_PUBLIC_API_URL}/api/password-reset`;
 
 // =========================================
 // MAIN COMPONENT
