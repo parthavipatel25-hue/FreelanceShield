@@ -42,7 +42,8 @@ const invoiceRoutes = require("./routes/invoiceRoutes");
 
 const allowedOrigins = [
   "https://freelanceshield-frontend.vercel.app",
-
+  "https://freelance-shield-ks16.vercel.app",
+  "https://freelanceshield-frontend-l3ix0a3ft-parthavi-patel-s-projects.vercel.app",
   process.env.FRONTEND_URL,
 ].filter(Boolean);
 
@@ -50,25 +51,30 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: function (origin, callback) {
-      // Allow requests without an origin
-      // such as Thunder Client/Postman
+      // Log incoming origin and allowed origins for debugging
+      console.log('CORS incoming origin:', origin);
+      console.log('CORS allowed origins array:', allowedOrigins);
+
+      // Allow requests without an Origin (e.g., Postman, curl)
       if (!origin) {
         return callback(null, true);
       }
 
-      if (allowedOrigins.includes(origin)) {
+      // Exact allowed frontend origins (production and preview)
+      const exactOrigins = [
+        "https://freelanceshield-frontend.vercel.app",
+        "https://freelanceshield-frontend-l3ix0a3ft-parthavi-patel-s-projects.vercel.app",
+        process.env.FRONTEND_URL,
+      ].filter(Boolean);
+
+      if (exactOrigins.includes(origin) || allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
         return callback(null, true);
       }
 
-      console.log("CORS BLOCKED ORIGIN:", origin);
-
-      return callback(
-        new Error("Not allowed by CORS")
-      );
+      console.log('CORS BLOCKED ORIGIN:', origin);
+      return callback(new Error('Not allowed by CORS'));
     },
-
     credentials: true,
-
     methods: [
       "GET",
       "POST",
@@ -77,7 +83,6 @@ app.use(
       "DELETE",
       "OPTIONS",
     ],
-
     allowedHeaders: [
       "Content-Type",
       "Authorization",
