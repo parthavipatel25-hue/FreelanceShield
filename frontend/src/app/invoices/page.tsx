@@ -1,4 +1,6 @@
 "use client";
+import { BASE_URL } from '@/lib/api'
+
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -117,7 +119,7 @@ export default function InvoicesPage() {
       }
 
       const response = await fetch(
-        "${process.env.NEXT_PUBLIC_API_URL}/api/payments/my-payments",
+        `${BASE_URL}/api/payments/my-payments`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -158,6 +160,7 @@ export default function InvoicesPage() {
 
   /* eslint-disable-next-line react-hooks/set-state-in-effect */
 useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadInvoices();
   }, []);
 

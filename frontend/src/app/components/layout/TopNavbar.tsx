@@ -1,4 +1,6 @@
 "use client";
+import { BASE_URL } from '@/lib/api'
+
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -140,7 +142,7 @@ useEffect(() => {
       setLoadingNotifications(true);
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/notifications/user/${user.id}`
+        `${BASE_URL}/api/notifications/user/${user.id}`
       );
 
       const data = await response.json();
@@ -244,7 +246,7 @@ useEffect(() => {
         params.append("search", trimmedSearch);
 
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/projects/search?${params.toString()}`
+          `${BASE_URL}/api/projects/search?${params.toString()}`
         );
 
         const data = await response.json();
@@ -275,7 +277,7 @@ useEffect(() => {
         params.append("search", trimmedSearch);
 
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/freelancer-profile/search?${params.toString()}`
+          `${BASE_URL}/api/freelancer-profile/search?${params.toString()}`
         );
 
         const data = await response.json();
@@ -399,7 +401,7 @@ useEffect(() => {
     try {
       if (!notification.is_read) {
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/notifications/${notification.id}/read`,
+          `${BASE_URL}/api/notifications/${notification.id}/read`,
           {
             method: "PUT",
           }
@@ -444,7 +446,7 @@ useEffect(() => {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/notifications/user/${user.id}/read-all`,
+        `${BASE_URL}/api/notifications/user/${user.id}/read-all`,
         {
           method: "PUT",
         }
@@ -921,7 +923,7 @@ useEffect(() => {
                                 >
                                   {freelancer.profile_picture ? (
                                     <img
-                                      src={`${process.env.NEXT_PUBLIC_API_URL}${freelancer.profile_picture}`}
+                                      src={`${BASE_URL}${freelancer.profile_picture}`}
                                       alt={
                                         freelancer.fullname
                                       }

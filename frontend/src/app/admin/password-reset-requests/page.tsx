@@ -1,5 +1,6 @@
-
 "use client";
+import { BASE_URL } from '@/lib/api'
+
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -48,7 +49,7 @@ interface ResetRequest {
 
 type FilterStatus = "all" | RequestStatus;
 
-const API_URL = `${process.env.NEXT_PUBLIC_API_URL}/api/password-reset`;
+const API_URL = `${BASE_URL}/api/password-reset`;
 
 // =========================================
 // MAIN COMPONENT

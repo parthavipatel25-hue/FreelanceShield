@@ -1,4 +1,6 @@
 "use client";
+import { BASE_URL } from '@/lib/api'
+
 
 import { useState } from "react";
 
@@ -128,7 +130,7 @@ export default function ChangePasswordForm() {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/profile/${user.id}/password`,
+        `${BASE_URL}/api/profile/${user.id}/password`,
         {
           method: "PUT",
 

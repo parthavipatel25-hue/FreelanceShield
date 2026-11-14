@@ -1,4 +1,6 @@
 "use client";
+import { BASE_URL } from '@/lib/api'
+
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -125,7 +127,7 @@ useEffect(() => {
       setError("");
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/contracts/client/${user.id}`
+        `${BASE_URL}/api/contracts/client/${user.id}`
       );
 
       const data = await response.json();

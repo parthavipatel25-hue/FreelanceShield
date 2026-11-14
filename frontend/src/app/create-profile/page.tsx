@@ -1,4 +1,6 @@
 "use client";
+import { BASE_URL } from '@/lib/api'
+
 
 import React, {
   ChangeEvent,
@@ -508,7 +510,7 @@ useEffect(() => {
 
       const response =
         await fetch(
-          "${process.env.NEXT_PUBLIC_API_URL}/api/freelancer-profile",
+          `${BASE_URL}/api/freelancer-profile`,
           {
             method: "POST",
 

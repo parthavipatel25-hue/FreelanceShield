@@ -1,4 +1,6 @@
 "use client";
+import { BASE_URL } from '@/lib/api'
+
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -66,7 +68,7 @@ useEffect(() => {
       setLoading(true);
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/projects/client/${userId}`
+        `${BASE_URL}/api/projects/client/${userId}`
       );
 
       const data = await response.json();
@@ -120,7 +122,7 @@ useEffect(() => {
       setSubmitting(true);
 
       const response = await fetch(
-        "${process.env.NEXT_PUBLIC_API_URL}/api/reviews",
+        `${BASE_URL}/api/reviews`,
         {
           method: "POST",
           headers: {

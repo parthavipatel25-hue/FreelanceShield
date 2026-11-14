@@ -1,4 +1,6 @@
 "use client";
+import { BASE_URL } from '@/lib/api'
+
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -126,7 +128,7 @@ useEffect(() => {
       }
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/admin-monitoring/activity-logs?${params.toString()}`
+        `${BASE_URL}/api/admin-monitoring/activity-logs?${params.toString()}`
       );
 
       const data = await response.json();

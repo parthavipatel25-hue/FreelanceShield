@@ -1,4 +1,6 @@
 "use client";
+import { BASE_URL } from '@/lib/api'
+
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -158,7 +160,7 @@ useEffect(() => {
 
         const response =
           await fetch(
-            "${process.env.NEXT_PUBLIC_API_URL}/api/projects",
+            `${BASE_URL}/api/projects`,
             {
               method: "GET",
               headers: {
@@ -305,7 +307,7 @@ useEffect(() => {
         // ============================================
 
         const url =
-          `${process.env.NEXT_PUBLIC_API_URL}/api/projects/search?${params.toString()}`;
+          `${BASE_URL}/api/projects/search?${params.toString()}`;
 
         console.log(
           "SEARCH URL:",

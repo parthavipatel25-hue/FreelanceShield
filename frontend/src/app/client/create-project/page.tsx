@@ -1,4 +1,6 @@
 "use client";
+import { BASE_URL } from '@/lib/api'
+
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -111,7 +113,7 @@ export default function CreateProjectPage() {
       setLoading(true);
 
       const response = await fetch(
-        "${process.env.NEXT_PUBLIC_API_URL}/api/projects",
+        `${BASE_URL}/api/projects`,
         {
           method: "POST",
           headers: {

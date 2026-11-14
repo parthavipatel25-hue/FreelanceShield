@@ -1,4 +1,6 @@
 "use client";
+import { BASE_URL } from '@/lib/api'
+
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -53,7 +55,7 @@ export default function EarningsPage() {
       }
 
       const response = await fetch(
-        "${process.env.NEXT_PUBLIC_API_URL}/api/payments/my-payments",
+        `${BASE_URL}/api/payments/my-payments`,
         {
           method: "GET",
           headers: {

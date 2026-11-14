@@ -1,4 +1,6 @@
 "use client";
+import { BASE_URL } from '@/lib/api'
+
 
 import { useEffect, useState } from "react";
 import {
@@ -9,6 +11,7 @@ import {
   Plus,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+// import removed duplicate
 
 interface ProfileCardProps {
   fullname: string;
@@ -82,7 +85,7 @@ useEffect(() => {
 
         if (isFreelancer) {
           const response = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/api/freelancer-profile/${userId}`
+            `${BASE_URL}/api/freelancer-profile/${userId}`
           );
 
           if (response.ok) {
@@ -104,7 +107,7 @@ useEffect(() => {
 
         if (isClient) {
           const response = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/api/client-profile/${userId}`
+            `${BASE_URL}/api/client-profile/${userId}`
           );
 
           if (response.ok) {

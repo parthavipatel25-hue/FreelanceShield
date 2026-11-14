@@ -1,4 +1,5 @@
 "use client";
+import { BASE_URL } from '@/lib/api'
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -18,7 +19,7 @@ import {
   FolderOpen,
 } from "lucide-react";
 
-const BACKEND_URL = "${process.env.NEXT_PUBLIC_API_URL}";
+const BACKEND_URL = `${BASE_URL}`;
 
 // ==================================================
 // USER

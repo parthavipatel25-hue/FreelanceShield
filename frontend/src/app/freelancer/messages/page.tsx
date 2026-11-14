@@ -1,4 +1,6 @@
 "use client";
+import { BASE_URL } from '@/lib/api'
+
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -131,7 +133,7 @@ useEffect(() => {
       setError("");
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/messages/conversations/user/${user.id}`,
+        `${BASE_URL}/api/messages/conversations/user/${user.id}`,
         {
           method: "GET",
           headers: {

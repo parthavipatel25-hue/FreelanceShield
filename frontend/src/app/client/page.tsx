@@ -1,4 +1,5 @@
 "use client";
+import { BASE_URL } from "@/lib/api";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -68,7 +69,7 @@ useEffect(() => {
         // ============================================
 
         const projectsResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/projects/client/${loggedInUser.id}`
+          `${BASE_URL}/api/projects/client/${loggedInUser.id}`
         );
 
         const projectsData = await projectsResponse.json();
@@ -97,7 +98,7 @@ useEffect(() => {
           clientProjects.map(async (project) => {
             try {
               const response = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/proposals/project/${project.id}`
+                `${BASE_URL}/api/proposals/project/${project.id}`
               );
 
               const data = await response.json();

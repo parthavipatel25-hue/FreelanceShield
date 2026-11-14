@@ -1,4 +1,5 @@
 "use client";
+import { BASE_URL } from "@/lib/api";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -66,7 +67,7 @@ export default function AdminPage() {
       setStatsLoading(true);
 
       const response = await fetch(
-        "${process.env.NEXT_PUBLIC_API_URL}/api/admin/dashboard-stats"
+        `${BASE_URL}/api/admin/dashboard-stats`
       );
 
       const data = await response.json();

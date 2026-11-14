@@ -1,4 +1,5 @@
 "use client";
+import { BASE_URL } from '@/lib/api'
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -118,7 +119,7 @@ useEffect(() => {
         setErrorMessage("");
 
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/portfolio/freelancer/${user.id}`
+          `${BASE_URL}/api/portfolio/freelancer/${user.id}`
         );
 
         const data = await response.json();
@@ -326,7 +327,7 @@ useEffect(() => {
       }
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/portfolio/${portfolioId}`,
+        `${BASE_URL}/api/portfolio/${portfolioId}`,
         {
           method: "PUT",
           body: formData,

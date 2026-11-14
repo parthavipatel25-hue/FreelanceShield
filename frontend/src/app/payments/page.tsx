@@ -1,5 +1,5 @@
-
 "use client";
+import { BASE_URL } from '@/lib/api'
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -73,7 +73,7 @@ useEffect(() => {
 
         // Fetch all contracts belonging to the client.
         const contractsResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/contracts/client/${userId}`,
+          `${BASE_URL}/api/contracts/client/${userId}`,
           { headers }
         );
 
@@ -89,7 +89,7 @@ useEffect(() => {
 
         // Fetch payment history to identify already-paid contracts.
         const paymentsResponse = await fetch(
-          "${process.env.NEXT_PUBLIC_API_URL}/api/payments/my-payments",
+          `${BASE_URL}/api/payments/my-payments`,
           { headers }
         );
 
@@ -256,7 +256,7 @@ useEffect(() => {
       setPaying(true);
 
       const response = await fetch(
-        "${process.env.NEXT_PUBLIC_API_URL}/api/payments/demo",
+        `${BASE_URL}/api/payments/demo`,
         {
           method: "POST",
           headers: {

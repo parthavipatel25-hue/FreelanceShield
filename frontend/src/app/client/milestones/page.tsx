@@ -1,4 +1,6 @@
 "use client";
+import { BASE_URL } from '@/lib/api'
+
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -97,7 +99,7 @@ export default function ClientMilestonesPage() {
       setLoadingProjects(true);
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/projects/client/${user.id}`
+        `${BASE_URL}/api/projects/client/${user.id}`
       );
 
       const data = await response.json();
@@ -146,7 +148,7 @@ export default function ClientMilestonesPage() {
       setLoadingMilestones(true);
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/milestones/project/${projectId}`
+        `${BASE_URL}/api/milestones/project/${projectId}`
       );
 
       const data = await response.json();
@@ -318,7 +320,7 @@ useEffect(() => {
       setSaving(true);
 
       let url =
-        "${process.env.NEXT_PUBLIC_API_URL}/api/milestones";
+        `${BASE_URL}/api/milestones`;
 
       let method = "POST";
 
@@ -335,7 +337,7 @@ useEffect(() => {
 
       // UPDATE
       if (editingMilestone) {
-        url = `${process.env.NEXT_PUBLIC_API_URL}/api/milestones/${editingMilestone.id}`;
+        url = `${BASE_URL}/api/milestones/${editingMilestone.id}`;
         method = "PUT";
 
         body = {
@@ -416,7 +418,7 @@ useEffect(() => {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/milestones/${milestoneId}`,
+        `${BASE_URL}/api/milestones/${milestoneId}`,
         {
           method: "DELETE",
         }

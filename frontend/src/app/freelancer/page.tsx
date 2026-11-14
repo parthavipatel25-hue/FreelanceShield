@@ -1,4 +1,6 @@
 "use client";
+import { BASE_URL } from '@/lib/api'
+
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -125,7 +127,7 @@ useEffect(() => {
     const fetchAvailableJobs = async () => {
       try {
         const response = await fetch(
-          "${process.env.NEXT_PUBLIC_API_URL}/api/projects"
+          `${BASE_URL}/api/projects`
         );
 
         const data =
@@ -181,7 +183,7 @@ useEffect(() => {
       async () => {
         try {
           const response = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/api/proposals/freelancer/${user.id}`
+            `${BASE_URL}/api/proposals/freelancer/${user.id}`
           );
 
           const data =
@@ -235,7 +237,7 @@ useEffect(() => {
                   try {
                     const projectResponse =
                       await fetch(
-                        `${process.env.NEXT_PUBLIC_API_URL}/api/projects/${proposal.project_id}`
+                        `${BASE_URL}/api/projects/${proposal.project_id}`
                       );
 
                     const projectData =

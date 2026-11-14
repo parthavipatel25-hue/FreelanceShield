@@ -1,4 +1,6 @@
 "use client";
+import { BASE_URL } from '@/lib/api'
+
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -125,7 +127,7 @@ useEffect(() => {
       setError("");
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/user-verification/admin/pending?admin_id=${adminId}`
+        `${BASE_URL}/api/user-verification/admin/pending?admin_id=${adminId}`
       );
 
       const data = await response.json();
@@ -168,7 +170,7 @@ useEffect(() => {
       setProcessingId(id);
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/user-verification/admin/${id}/approve`,
+        `${BASE_URL}/api/user-verification/admin/${id}/approve`,
         {
           method: "PUT",
           headers: {
@@ -228,7 +230,7 @@ useEffect(() => {
       setProcessingId(id);
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/user-verification/admin/${id}/reject`,
+        `${BASE_URL}/api/user-verification/admin/${id}/reject`,
         {
           method: "PUT",
           headers: {

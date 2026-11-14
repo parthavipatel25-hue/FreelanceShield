@@ -1,5 +1,6 @@
-
 "use client";
+import { BASE_URL } from '@/lib/api'
+
 
 import { useCallback, useEffect, useState } from "react";
 import { Search, RefreshCw, FileText } from "lucide-react";
@@ -70,7 +71,7 @@ export default function AdminReportsPage() {
       });
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/admin/reports?${params.toString()}`,
+        `${BASE_URL}/api/admin/reports?${params.toString()}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -123,7 +124,7 @@ useEffect(() => {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/admin/reports/${reportId}/status`,
+        `${BASE_URL}/api/admin/reports/${reportId}/status`,
         {
           method: "PATCH",
           headers: {

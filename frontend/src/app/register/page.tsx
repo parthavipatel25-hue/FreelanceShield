@@ -1,5 +1,5 @@
-
 "use client";
+import { BASE_URL } from '@/lib/api'
 
 import Link from "next/link";
 import { useState, useEffect, Suspense } from "react";
@@ -125,7 +125,7 @@ useEffect(() => {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/register`,
+        `${BASE_URL}/api/auth/register`,
         {
           method: "POST",
           headers: {

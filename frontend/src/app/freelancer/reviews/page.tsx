@@ -1,4 +1,6 @@
 "use client";
+import { BASE_URL } from '@/lib/api'
+
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -81,7 +83,7 @@ useEffect(() => {
   const fetchReviews = async (freelancerId: number) => {
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/reviews/freelancer/${freelancerId}`
+        `${BASE_URL}/api/reviews/freelancer/${freelancerId}`
       );
 
       const data = await response.json();
@@ -108,7 +110,7 @@ useEffect(() => {
   const fetchRating = async (freelancerId: number) => {
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/reviews/freelancer/${freelancerId}/rating`
+        `${BASE_URL}/api/reviews/freelancer/${freelancerId}/rating`
       );
 
       const data = await response.json();

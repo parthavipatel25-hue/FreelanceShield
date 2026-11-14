@@ -1,4 +1,6 @@
 "use client";
+import { BASE_URL } from '@/lib/api'
+
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -109,7 +111,7 @@ useEffect(() => {
       setError("");
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/projects`
+        `${BASE_URL}/api/projects`
       );
 
       const data = await response.json();
@@ -169,7 +171,7 @@ useEffect(() => {
       setError("");
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/milestones/project/${projectId}`
+        `${BASE_URL}/api/milestones/project/${projectId}`
       );
 
       const data = await response.json();
@@ -211,7 +213,7 @@ useEffect(() => {
       setError("");
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/milestones/${milestoneId}/progress`,
+        `${BASE_URL}/api/milestones/${milestoneId}/progress`,
         {
           method: "PUT",
           headers: {

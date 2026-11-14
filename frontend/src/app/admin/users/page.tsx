@@ -1,4 +1,6 @@
 "use client";
+import { BASE_URL } from '@/lib/api'
+
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -112,7 +114,7 @@ useEffect(() => {
       if (status) params.set("status", status);
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/admin/users?${params.toString()}`,
+        `${BASE_URL}/api/admin/users?${params.toString()}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -203,7 +205,7 @@ useEffect(() => {
       setNotice("");
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/admin/users/${targetUser.id}/status`,
+        `${BASE_URL}/api/admin/users/${targetUser.id}/status`,
         {
           method: "PUT",
           headers: {

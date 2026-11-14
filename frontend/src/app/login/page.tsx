@@ -1,4 +1,5 @@
 "use client";
+import { BASE_URL } from "@/lib/api";
 
 import Link from "next/link";
 import { useState } from "react";
@@ -56,9 +57,9 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const apiBase = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/+$/, "");
+
       const response = await fetch(
-        `${apiBase}/api/auth/login`,
+        `${BASE_URL}/api/auth/login`,
         {
           method: "POST",
           headers: {

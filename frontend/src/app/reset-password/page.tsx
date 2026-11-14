@@ -1,5 +1,5 @@
-
 "use client";
+import { BASE_URL } from '@/lib/api'
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -86,7 +86,7 @@ useEffect(() => {
         }
 
         response = await fetch(
-          "${process.env.NEXT_PUBLIC_API_URL}/api/auth/force-change-password",
+          `${BASE_URL}/api/auth/force-change-password`,
           {
             method: "PUT",
             headers: {
@@ -98,7 +98,7 @@ useEffect(() => {
         );
       } else if (mode === "normal") {
         response = await fetch(
-          "${process.env.NEXT_PUBLIC_API_URL}/api/password-reset/reset-password",
+          `${BASE_URL}/api/password-reset/reset-password`,
           {
             method: "POST",
             headers: {

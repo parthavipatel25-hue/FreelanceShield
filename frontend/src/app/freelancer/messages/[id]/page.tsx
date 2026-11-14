@@ -1,4 +1,5 @@
 "use client";
+import { BASE_URL } from '@/lib/api'
 
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -169,7 +170,7 @@ useEffect(() => {
 
        const conversationResponse =
   await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/api/messages/conversations/${conversationId}?user_id=${user.id}`,
+    `${BASE_URL}/api/messages/conversations/${conversationId}?user_id=${user.id}`,
             {
               method: "GET",
               headers: {
@@ -224,7 +225,7 @@ useEffect(() => {
 
         const messagesResponse =
   await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/api/messages/conversations/${conversationId}/messages?user_id=${user.id}`,
+    `${BASE_URL}/api/messages/conversations/${conversationId}/messages?user_id=${user.id}`,
             {
               method: "GET",
               headers: {
@@ -276,7 +277,7 @@ useEffect(() => {
         for (const message of unreadMessages) {
           try {
             await fetch(
-              `${process.env.NEXT_PUBLIC_API_URL}/api/messages/messages/${message.id}/read`,
+              `${BASE_URL}/api/messages/messages/${message.id}/read`,
               {
                 method: "PUT",
                 headers: {
@@ -350,7 +351,7 @@ useEffect(() => {
         Number(conversation.client_id);
 
       const response = await fetch(
-        "${process.env.NEXT_PUBLIC_API_URL}/api/messages/messages",
+        `${BASE_URL}/api/messages/messages`,
         {
           method: "POST",
           headers: {

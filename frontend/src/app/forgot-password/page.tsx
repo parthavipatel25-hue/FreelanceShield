@@ -1,10 +1,10 @@
-
 "use client";
+import { BASE_URL } from '@/lib/api'
 
 import Link from "next/link";
 import { useState } from "react";
 
-const API_URL = "${process.env.NEXT_PUBLIC_API_URL}/api/password-reset";
+const API_URL = `${BASE_URL}/api/password-reset`;
 
 type RequestStatus =
   | "pending"

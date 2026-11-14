@@ -1,4 +1,6 @@
 "use client";
+import { BASE_URL } from '@/lib/api'
+
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -185,7 +187,7 @@ useEffect(() => {
       setError("");
 
       const response = await fetch(
-        "${process.env.NEXT_PUBLIC_API_URL}/api/risks"
+        `${BASE_URL}/api/risks`
       );
 
       const data = await response.json();
@@ -217,7 +219,7 @@ useEffect(() => {
   const fetchSummary = async () => {
     try {
       const response = await fetch(
-        "${process.env.NEXT_PUBLIC_API_URL}/api/risks/summary"
+        `${BASE_URL}/api/risks/summary`
       );
 
       const data = await response.json();
@@ -281,7 +283,7 @@ useEffect(() => {
       setSuccess("");
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/risks/${riskId}/status`,
+        `${BASE_URL}/api/risks/${riskId}/status`,
         {
           method: "PUT",
           headers: {
@@ -517,7 +519,7 @@ useEffect(() => {
       setSuccess("");
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/risks/${riskId}`,
+        `${BASE_URL}/api/risks/${riskId}`,
         {
           method: "DELETE",
         }

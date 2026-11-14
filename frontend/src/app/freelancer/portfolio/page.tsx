@@ -1,4 +1,6 @@
 "use client";
+import { BASE_URL } from '@/lib/api'
+
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -9,7 +11,7 @@ import DashboardLayout from "../../components/layout/DashboardLayout";
 // CONSTANTS
 // ============================================================
 
-const API_BASE_URL = "${process.env.NEXT_PUBLIC_API_URL}";
+const API_BASE_URL = `${BASE_URL}`;
 
 // ============================================================
 // TYPES

@@ -1,5 +1,5 @@
-
 "use client";
+
 
 interface ProfileCompletionProps {
   progress?: number;

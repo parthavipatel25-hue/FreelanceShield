@@ -1,4 +1,6 @@
 "use client";
+import { BASE_URL } from '@/lib/api'
+
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -131,7 +133,7 @@ useEffect(() => {
       setError("");
 
       const response = await fetch(
-        "${process.env.NEXT_PUBLIC_API_URL}/api/security-reports"
+        `${BASE_URL}/api/security-reports`
       );
 
       const data = await response.json();
@@ -167,7 +169,7 @@ useEffect(() => {
   const fetchSummary = async () => {
     try {
       const response = await fetch(
-        "${process.env.NEXT_PUBLIC_API_URL}/api/security-reports/summary"
+        `${BASE_URL}/api/security-reports/summary`
       );
 
       const data = await response.json();
@@ -195,7 +197,7 @@ useEffect(() => {
   const fetchRisks = async () => {
     try {
       const response = await fetch(
-        "${process.env.NEXT_PUBLIC_API_URL}/api/risks"
+        `${BASE_URL}/api/risks`
       );
 
       const data = await response.json();

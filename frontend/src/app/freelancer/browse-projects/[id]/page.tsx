@@ -1,4 +1,5 @@
 "use client";
+import { BASE_URL } from '@/lib/api'
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -107,7 +108,7 @@ useEffect(() => {
         setError("");
 
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/projects/${projectId}`
+          `${BASE_URL}/api/projects/${projectId}`
         );
 
         const data = await response.json();
@@ -199,7 +200,7 @@ useEffect(() => {
         throw new Error("Please log in again to submit a report.");
       }
 
-      const response = await fetch("${process.env.NEXT_PUBLIC_API_URL}/api/reports", {
+      const response = await fetch(`${BASE_URL}/api/reports`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -270,7 +271,7 @@ useEffect(() => {
       setProposalError("");
       setProposalMessage("");
 
-      const response = await fetch("${process.env.NEXT_PUBLIC_API_URL}/api/proposals", {
+      const response = await fetch(`${BASE_URL}/api/proposals`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

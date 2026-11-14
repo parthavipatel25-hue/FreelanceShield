@@ -1,4 +1,6 @@
 "use client";
+import { BASE_URL } from '@/lib/api'
+
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -131,7 +133,7 @@ useEffect(() => {
       setError("");
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/contracts/freelancer/${user.id}`
+        `${BASE_URL}/api/contracts/freelancer/${user.id}`
       );
 
       const data = await response.json();
@@ -343,7 +345,7 @@ useEffect(() => {
       setError("");
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/projects/${contract.project_id}/progress`,
+        `${BASE_URL}/api/projects/${contract.project_id}/progress`,
         {
           method: "PUT",
           headers: {
@@ -400,7 +402,7 @@ useEffect(() => {
       setError("");
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/projects/${contract.project_id}/complete`,
+        `${BASE_URL}/api/projects/${contract.project_id}/complete`,
         {
           method: "PUT",
           headers: {

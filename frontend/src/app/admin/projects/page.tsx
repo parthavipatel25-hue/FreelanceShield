@@ -1,5 +1,6 @@
 
 "use client";
+import { BASE_URL } from "@/lib/api";
 
 import { useCallback, useEffect, useState } from "react";
 import { Search, RefreshCw, FolderKanban } from "lucide-react";
@@ -27,7 +28,7 @@ interface Pagination {
   totalPages: number;
 }
 
-const API_URL = "${process.env.NEXT_PUBLIC_API_URL}/api/admin/projects";
+const API_URL = `${BASE_URL}/api/admin/projects`;
 
 export default function AdminProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);

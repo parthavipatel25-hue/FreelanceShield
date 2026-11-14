@@ -1,4 +1,6 @@
 "use client";
+import { BASE_URL } from '@/lib/api'
+
 
 import React, { useEffect, useState } from "react";
 
@@ -63,7 +65,7 @@ interface EditProfileFormProps {
 // BACKEND URL
 // ==================================================
 
-const API_BASE_URL = "${process.env.NEXT_PUBLIC_API_URL}";
+const API_BASE_URL = `${BASE_URL}`;
 
 // ==================================================
 // CLEAN SINGLE SKILL
