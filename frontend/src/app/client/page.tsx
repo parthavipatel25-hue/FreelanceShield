@@ -124,14 +124,23 @@ useEffect(() => {
 
         setProposalCount(allProposals.length);
 
-      } catch (error) {
+          } catch (error) {
         console.error(
           "CLIENT DASHBOARD ERROR:",
           error
         );
 
-        localStorage.removeItem("user");
-        router.push("/login");
+        const errorMessage =
+          error instanceof Error ? error.message : "";
+
+        if (
+          errorMessage.toLowerCase().includes("client profile not found")
+        ) {
+          router.push("/client-create-profile");
+          return;
+        }
+
+        // Keep the user logged in for other API errors.
       }
     };
 
